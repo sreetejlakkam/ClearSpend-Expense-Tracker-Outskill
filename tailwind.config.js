@@ -7,40 +7,50 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#FAFAF8',
-        foreground: '#18181B',
+        background: '#F6F8FC', // BudgetBakers-style soft airy financial canvas
+        foreground: '#0F172A', // Deep slate for razor-sharp typography
+        surface: '#FFFFFF',
         brand: {
-          50: '#F0FDFA',
-          100: '#CCFBF1',
-          200: '#99F6E4',
-          300: '#5EEAD4',
-          400: '#2DD4BF',
-          500: '#14B8A6',
-          600: '#0D9488',
-          700: '#0F766E', // Primary accent
-          800: '#115E59',
-          900: '#134E4A',
-          950: '#042F2E',
+          50: '#EEF2FF',
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A5B4FC',
+          400: '#818CF8',
+          500: '#6366F1',
+          600: '#4F46E5',
+          700: '#4338CA', // Primary Royal Indigo
+          800: '#3730A3',
+          900: '#312E81',
+          950: '#1E1B4B',
         },
         expense: {
-          light: '#FEE2E2',
-          DEFAULT: '#DC2626',
-          dark: '#991B1B',
+          light: '#FFE4E6',
+          DEFAULT: '#F43F5E',
+          dark: '#9F1239',
         },
         income: {
-          light: '#D1FAE5',
-          DEFAULT: '#059669',
+          light: '#DCFCE7',
+          DEFAULT: '#10B981',
           dark: '#065F46',
+        },
+        accent: {
+          blue: '#2563EB',
+          indigo: '#4F46E5',
+          violet: '#7C3AED',
+          amber: '#F59E0B',
+          emerald: '#10B981',
+          rose: '#F43F5E',
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)',
-        'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-        'sticky-bar': '0 -4px 12px -2px rgba(0, 0, 0, 0.06)',
+        'card': '0 2px 8px -1px rgba(15, 23, 42, 0.04), 0 1px 3px -1px rgba(15, 23, 42, 0.02)',
+        'card-hover': '0 8px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04)',
+        'modal': '0 25px 35px -5px rgba(15, 23, 42, 0.15), 0 10px 15px -5px rgba(15, 23, 42, 0.08)',
+        'sticky-bar': '0 -4px 20px -2px rgba(15, 23, 42, 0.06)',
+        'glow-brand': '0 4px 16px -2px rgba(79, 70, 229, 0.3)',
       },
       borderRadius: {
         '2xl': '1rem',
@@ -50,3 +60,4 @@ export default {
   },
   plugins: [],
 }
+

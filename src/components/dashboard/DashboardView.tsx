@@ -1,18 +1,33 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   ChevronRight,
+  CreditCard,
   PiggyBank,
   Plus,
   ReceiptText,
   ShieldAlert,
   Sparkles,
-  TrendingDown,
   TrendingUp,
+  Wallet as WalletIcon,
   X,
+  Zap,
+  Building2,
+  Banknote,
+  Coins
 } from 'lucide-react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import {
+  Area,
+  AreaChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
 import { useStore } from '../../lib/store';
 import { CategoryIcon } from '../common/CategoryIcon';
 
@@ -21,6 +36,7 @@ export const DashboardView: React.FC = () => {
     transactions,
     categories,
     budgets,
+    wallets,
     insights,
     dismissInsight,
     selectedMonthStr,
@@ -31,6 +47,9 @@ export const DashboardView: React.FC = () => {
     setEditingTransaction,
     pendingReviewCount,
   } = useStore();
+
+
+  const [activeChartTab, setActiveChartTab] = useState<'daily' | 'category'>('daily');
 
   const currSym = profile?.base_currency === 'INR' ? '₹' : (profile?.base_currency || '₹');
 
@@ -55,6 +74,18 @@ export const DashboardView: React.FC = () => {
   }, [monthTransactions]);
 
   const netBalance = totalEarned - totalSpent;
+  const savingsRate = totalEarned > 0 ? Math.max(0, Math.round(((totalEarned - totalSpent) / totalEarned) * 100)) : 0;
+
+  // Wallet Balances summary
+  const totalWalletBalance = useMemo(() => {
+    return wallets.reduce((acc, w) => {
+      // Add transactions on this wallet
+      const walletTxns = transactions.filter((t) => t.wallet_id === w.id && t.status === 'active');
+      const earned = walletTxns.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0);
+      const spent = walletTxns.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0);
+      return acc + (w.opening_balance + earned - spent);
+    }, 0);
+  }, [wallets, transactions]);
 
   // Category Donut Data
   const categoryExpenses = useMemo(() => {
@@ -87,10 +118,42 @@ export const DashboardView: React.FC = () => {
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const isCurrentMonth =
-    now.getFullYear() === year && now.getMonth() === month;
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month;
   const daysElapsed = isCurrentMonth ? Math.min(now.getDate(), daysInMonth) : daysInMonth;
   const daysRemaining = Math.max(daysInMonth - daysElapsed, 1);
+  const avgDailySpend = daysElapsed > 0 ? Math.round(totalSpent / daysElapsed) : 0;
+
+  // Daily Spending Trend Data for AreaChart
+  const dailySpendData = useMemo(() => {
+    const daysMap = new Map<number, number>();
+    for (let d = 1; d <= daysInMonth; d++) {
+      daysMap.set(d, 0);
+    }
+
+    for (const t of monthTransactions) {
+      if (t.kind === 'expense') {
+        const day = parseInt(t.txn_date.split('-')[2], 10);
+        if (!isNaN(day)) {
+          daysMap.set(day, (daysMap.get(day) || 0) + t.amount);
+        }
+      }
+    }
+
+    // Cumulative & daily points
+    let cumulative = 0;
+    const points = [];
+    for (let d = 1; d <= (isCurrentMonth ? daysElapsed : daysInMonth); d++) {
+      const amount = daysMap.get(d) || 0;
+      cumulative += amount;
+      points.push({
+        day: `Day ${d}`,
+        date: `${d} ${selectedDate.toLocaleString('default', { month: 'short' })}`,
+        amount: amount,
+        cumulative: cumulative,
+      });
+    }
+    return points;
+  }, [monthTransactions, daysInMonth, isCurrentMonth, daysElapsed, selectedDate]);
 
   // Proactive Overspend Warning Alerts
   const overspendAlerts = useMemo(() => {
@@ -142,7 +205,42 @@ export const DashboardView: React.FC = () => {
       .slice(0, 5);
   }, [transactions]);
 
-  // Category Click Handler
+  // Helper for Wallet Icon & Gradients
+  const getWalletCardStyle = (type: string) => {
+    switch (type) {
+      case 'bank':
+        return {
+          gradient: 'from-blue-600 via-indigo-600 to-indigo-800',
+          badgeBg: 'bg-blue-400/20 text-blue-100 border-blue-300/30',
+          icon: Building2,
+        };
+      case 'wallet':
+        return {
+          gradient: 'from-sky-500 via-indigo-500 to-blue-600',
+          badgeBg: 'bg-sky-400/20 text-sky-100 border-sky-300/30',
+          icon: Zap,
+        };
+      case 'cash':
+        return {
+          gradient: 'from-emerald-600 via-teal-600 to-emerald-800',
+          badgeBg: 'bg-emerald-400/20 text-emerald-100 border-emerald-300/30',
+          icon: Coins,
+        };
+      case 'card':
+        return {
+          gradient: 'from-purple-600 via-indigo-600 to-rose-600',
+          badgeBg: 'bg-purple-400/20 text-purple-100 border-purple-300/30',
+          icon: CreditCard,
+        };
+      default:
+        return {
+          gradient: 'from-slate-700 via-slate-800 to-slate-900',
+          badgeBg: 'bg-slate-400/20 text-slate-100 border-slate-300/30',
+          icon: Banknote,
+        };
+    }
+  };
+
   const handleCategoryClick = (catId: string) => {
     setActiveCategoryFilter(catId);
     setActiveTab('transactions');
@@ -154,24 +252,24 @@ export const DashboardView: React.FC = () => {
       {pendingReviewCount > 0 && (
         <div
           onClick={() => setActiveTab('review')}
-          className="cursor-pointer flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl shadow-md shadow-amber-950/10 transition-all group"
+          className="cursor-pointer flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-500 via-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-2xl shadow-md shadow-amber-500/20 transition-all group"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-              <ShieldAlert className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-xs font-extrabold leading-tight">
                 {pendingReviewCount} transaction{pendingReviewCount > 1 ? 's' : ''} need review
               </p>
               <p className="text-[11px] text-amber-100 mt-0.5">
-                Suspected duplicates or unusual spikes detected
+                Suspected duplicates or unusual spending spikes detected
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-xs font-bold bg-white/20 group-hover:bg-white/30 px-2.5 py-1 rounded-xl transition-colors">
+          <div className="flex items-center gap-1 text-xs font-bold bg-white/20 group-hover:bg-white/30 px-3 py-1.5 rounded-xl transition-colors">
             <span>Fix Ledger</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </div>
         </div>
       )}
@@ -179,11 +277,13 @@ export const DashboardView: React.FC = () => {
       {/* 2. Proactive Overspend Forecast Alert */}
       {overspendAlerts.length > 0 && (
         <div className="p-4 bg-amber-50/95 border border-amber-200/90 rounded-2xl shadow-xs">
-          <div className="flex items-start gap-2.5">
-            <TrendingUp className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+              <TrendingUp className="w-4 h-4" />
+            </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-xs font-bold text-amber-900 leading-tight">
-                Proactive Budget Warning
+                Proactive Budget Velocity Alert
               </h4>
               <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                 At this pace you'll spend{' '}
@@ -195,105 +295,243 @@ export const DashboardView: React.FC = () => {
                   {currSym}{Math.round(overspendAlerts[0].overspendAmount).toLocaleString()} over budget
                 </span>
                 . Cap it at{' '}
-                <span className="font-extrabold text-amber-950">
+                <span className="font-extrabold text-amber-950 underline decoration-amber-400">
                   {currSym}{Math.round(overspendAlerts[0].dailyTargetToStayOnTrack)}/day
                 </span>{' '}
-                to stay on track.
+                for the next {daysRemaining} days to stay on track.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* 3. Three Summary Stats (Spent, Earned, Net) */}
-      <div className="grid grid-cols-3 gap-2">
-        {/* Spent */}
-        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-zinc-200/80 shadow-card">
-          <div className="flex items-center justify-between text-zinc-500 mb-1">
-            <span className="text-[11px] font-semibold">Spent</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />
+      {/* 3. Account / Wallets Carousel (Money Manager & Wallet by BudgetBakers Style) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+            <WalletIcon className="w-4 h-4 text-brand-600" />
+            <span>Accounts & Liquid Assets</span>
           </div>
-          <div className="text-base sm:text-xl font-extrabold text-zinc-900 tabular-nums truncate">
-            {currSym}{totalSpent.toLocaleString()}
-          </div>
-          <span className="text-[10px] text-zinc-400 font-medium">This month</span>
+          <span className="text-xs font-bold text-slate-600 tabular-nums">
+            Net: <span className="text-brand-700 font-extrabold">{currSym}{totalWalletBalance.toLocaleString()}</span>
+          </span>
         </div>
 
-        {/* Earned */}
-        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-zinc-200/80 shadow-card">
-          <div className="flex items-center justify-between text-zinc-500 mb-1">
-            <span className="text-[11px] font-semibold">Earned</span>
-            <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-600" />
-          </div>
-          <div className="text-base sm:text-xl font-extrabold text-emerald-700 tabular-nums truncate">
-            {currSym}{totalEarned.toLocaleString()}
-          </div>
-          <span className="text-[10px] text-zinc-400 font-medium">This month</span>
-        </div>
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none snap-x">
+          {wallets.map((w) => {
+            const style = getWalletCardStyle(w.type);
+            const Icon = style.icon;
 
-        {/* Net */}
-        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-zinc-200/80 shadow-card">
-          <div className="flex items-center justify-between text-zinc-500 mb-1">
-            <span className="text-[11px] font-semibold">Net Balance</span>
-            {netBalance >= 0 ? (
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-            ) : (
-              <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
-            )}
-          </div>
-          <div
-            className={`text-base sm:text-xl font-extrabold tabular-nums truncate ${
-              netBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'
-            }`}
-          >
-            {netBalance >= 0 ? '+' : ''}
-            {currSym}{netBalance.toLocaleString()}
-          </div>
-          <span className="text-[10px] text-zinc-400 font-medium">Saved so far</span>
+            // Calculate current live balance
+            const wTxns = transactions.filter((t) => t.wallet_id === w.id && t.status === 'active');
+            const earned = wTxns.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0);
+            const spent = wTxns.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0);
+            const currentBal = w.opening_balance + earned - spent;
+
+            return (
+              <div
+                key={w.id}
+                onClick={() => {
+                  setActiveTab('settings');
+                }}
+                className={`min-w-[170px] sm:min-w-[190px] p-3.5 rounded-2xl bg-gradient-to-br ${style.gradient} text-white shadow-md shadow-slate-900/10 snap-start cursor-pointer hover:scale-[1.02] transition-all relative overflow-hidden`}
+              >
+                <div className="flex items-center justify-between gap-1 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Icon className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${style.badgeBg}`}>
+                    {w.type}
+                  </span>
+                </div>
+
+                <div className="text-[11px] font-medium text-white/85 truncate">
+                  {w.name}
+                </div>
+                <div className="text-base font-black tabular-nums mt-0.5 text-white tracking-tight">
+                  {currSym}{currentBal.toLocaleString()}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* 4. AI Insights Cards Carousel */}
+      {/* 4. Three High-Impact Monthly Metric Cards */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {/* Spent */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-card">
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-bold text-slate-600">Spent</span>
+            <div className="w-5 h-5 rounded-full bg-rose-50 flex items-center justify-center">
+              <ArrowUpRight className="w-3 h-3 text-rose-500" />
+            </div>
+          </div>
+          <div className="text-base sm:text-xl font-black text-slate-900 tabular-nums truncate">
+            {currSym}{totalSpent.toLocaleString()}
+          </div>
+          <div className="text-[10px] text-slate-400 font-semibold mt-0.5 flex items-center gap-1">
+            <span>Burn:</span>
+            <span className="text-slate-600 font-bold">{currSym}{avgDailySpend}/d</span>
+          </div>
+        </div>
+
+        {/* Earned */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-card">
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-bold text-slate-600">Earned</span>
+            <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center">
+              <ArrowDownLeft className="w-3 h-3 text-emerald-600" />
+            </div>
+          </div>
+          <div className="text-base sm:text-xl font-black text-emerald-700 tabular-nums truncate">
+            {currSym}{totalEarned.toLocaleString()}
+          </div>
+          <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">
+            {monthTransactions.filter((t) => t.kind === 'income').length} credit{monthTransactions.filter((t) => t.kind === 'income').length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {/* Savings Rate / Net */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-card">
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[11px] font-bold text-slate-600">Savings</span>
+            <div className="w-5 h-5 rounded-full bg-indigo-50 flex items-center justify-center">
+              <PiggyBank className="w-3 h-3 text-brand-600" />
+            </div>
+          </div>
+          <div
+            className={`text-base sm:text-xl font-black tabular-nums truncate ${
+              netBalance >= 0 ? 'text-indigo-700' : 'text-rose-600'
+            }`}
+          >
+            {savingsRate}%
+          </div>
+          <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+            {netBalance >= 0 ? '+' : ''}{currSym}{netBalance.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Spending Velocity & Infographic Area Chart */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-card">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 leading-tight">Cash Flow Infographic</h3>
+            <p className="text-[11px] text-slate-500">Day-by-day expenditure curve</p>
+          </div>
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/60">
+            <button
+              onClick={() => setActiveChartTab('daily')}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                activeChartTab === 'daily'
+                  ? 'bg-white text-brand-700 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              onClick={() => setActiveChartTab('category')}
+              className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all ${
+                activeChartTab === 'category'
+                  ? 'bg-white text-brand-700 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Cumulative
+            </button>
+          </div>
+        </div>
+
+        <div className="h-44 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={dailySpendData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+              <defs>
+                <linearGradient id="spendGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="day"
+                stroke="#94A3B8"
+                fontSize={10}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                stroke="#94A3B8"
+                fontSize={10}
+                tickLine={false}
+                tickFormatter={(val) => `${currSym}${val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0F172A',
+                  borderRadius: '12px',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  fontSize: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                }}
+                formatter={(val: number) => [`${currSym}${val.toLocaleString()}`, activeChartTab === 'daily' ? 'Daily Spend' : 'Total Spent']}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.date || ''}
+              />
+              <Area
+                type="monotone"
+                dataKey={activeChartTab === 'daily' ? 'amount' : 'cumulative'}
+                stroke="#4F46E5"
+                strokeWidth={2.5}
+                fillOpacity={1}
+                fill="url(#spendGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 6. AI Insights Cards Carousel */}
       {insights.filter((i) => !i.is_dismissed).length > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-800">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
               <Sparkles className="w-3.5 h-3.5 text-brand-600" />
               <span>AI Coach Digest</span>
             </div>
             <button
               onClick={() => setActiveTab('insights')}
-              className="text-[11px] font-semibold text-brand-700 hover:text-brand-800"
+              className="text-[11px] font-bold text-brand-700 hover:text-brand-800"
             >
               View all
             </button>
           </div>
 
-          <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none snap-x">
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none snap-x">
             {insights
               .filter((i) => !i.is_dismissed)
               .map((card) => (
                 <div
                   key={card.id}
-                  className="min-w-[280px] sm:min-w-[320px] max-w-[320px] shrink-0 snap-start p-3.5 bg-gradient-to-br from-brand-900 to-teal-950 text-white rounded-2xl shadow-card relative group"
+                  className="min-w-[280px] sm:min-w-[320px] max-w-[320px] shrink-0 snap-start p-3.5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl shadow-card relative group border border-slate-800"
                 >
                   <button
                     onClick={() => dismissInsight(card.id)}
-                    className="absolute top-2.5 right-2.5 text-teal-300 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                    className="absolute top-2.5 right-2.5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
                     title="Dismiss"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
 
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-teal-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                     {card.type.replace('_', ' ')}
                   </div>
 
                   <h5 className="text-xs font-bold text-white mt-1 leading-snug pr-4">
                     {card.title}
                   </h5>
-                  <p className="text-[11px] text-teal-100/90 mt-1 leading-relaxed">
+                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
                     {card.body}
                   </p>
                 </div>
@@ -302,14 +540,14 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* 5. Recharts Donut & Category Breakdown */}
-      <div className="bg-white p-4 rounded-3xl border border-zinc-200/80 shadow-card">
+      {/* 7. Recharts Donut & Category Breakdown */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-card">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 leading-tight">Spending Breakdown</h3>
-            <p className="text-[11px] text-zinc-500">By Category • Tap slice to filter</p>
+            <h3 className="text-sm font-bold text-slate-900 leading-tight">Spending Breakdown</h3>
+            <p className="text-[11px] text-slate-500">By Category • Tap slice to filter ledger</p>
           </div>
-          <span className="text-xs font-bold text-zinc-700 tabular-nums">
+          <span className="text-xs font-extrabold text-slate-800 tabular-nums">
             {currSym}{totalSpent.toLocaleString()}
           </span>
         </div>
@@ -324,8 +562,8 @@ export const DashboardView: React.FC = () => {
                     data={categoryExpenses}
                     cx="50%"
                     cy="50%"
-                    innerRadius={52}
-                    outerRadius={75}
+                    innerRadius={54}
+                    outerRadius={76}
                     paddingAngle={3}
                     dataKey="value"
                     onClick={(data) => handleCategoryClick(data.id)}
@@ -338,7 +576,7 @@ export const DashboardView: React.FC = () => {
                   <Tooltip
                     formatter={(val: number) => [`${currSym}${val.toLocaleString()}`, 'Spent']}
                     contentStyle={{
-                      backgroundColor: '#18181B',
+                      backgroundColor: '#0F172A',
                       borderRadius: '12px',
                       color: '#fff',
                       fontSize: '12px',
@@ -350,33 +588,44 @@ export const DashboardView: React.FC = () => {
 
               {/* Center summary text */}
               <div className="absolute flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] uppercase font-semibold text-zinc-400">Total</span>
-                <span className="text-sm font-extrabold text-zinc-900 tabular-nums">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Total</span>
+                <span className="text-sm font-black text-slate-900 tabular-nums">
                   {currSym}{Math.round(totalSpent).toLocaleString()}
                 </span>
               </div>
             </div>
 
             {/* Category Legend List */}
-            <div className="mt-3 divide-y divide-zinc-100">
+            <div className="mt-3 divide-y divide-slate-100">
               {categoryExpenses.map((cat) => (
                 <div
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat.id)}
-                  className="py-2 flex items-center justify-between gap-2 hover:bg-zinc-50 px-2 rounded-xl cursor-pointer transition-colors"
+                  className="py-2.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 px-2 rounded-xl cursor-pointer transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <CategoryIcon name={cat.icon} color={cat.color} size={16} />
-                    <span className="text-xs font-semibold text-zinc-800 truncate">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${cat.color}15` }}
+                    >
+                      <CategoryIcon name={cat.icon} color={cat.color} size={15} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-800 truncate">
                       {cat.name}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-right shrink-0">
-                    <span className="text-xs font-bold text-zinc-900 tabular-nums">
+                  <div className="flex items-center gap-2.5 text-right shrink-0">
+                    <span className="text-xs font-extrabold text-slate-900 tabular-nums">
                       {currSym}{cat.value.toLocaleString()}
                     </span>
-                    <span className="text-[11px] font-semibold text-zinc-400 w-10 text-right tabular-nums">
+                    <span
+                      className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full tabular-nums"
+                      style={{
+                        backgroundColor: `${cat.color}15`,
+                        color: cat.color,
+                      }}
+                    >
                       {Math.round(cat.percentage)}%
                     </span>
                   </div>
@@ -386,23 +635,23 @@ export const DashboardView: React.FC = () => {
           </div>
         ) : (
           <div className="py-8 text-center">
-            <ReceiptText className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
-            <p className="text-xs font-semibold text-zinc-500">No expenses recorded for this month</p>
-            <p className="text-[11px] text-zinc-400 mt-0.5">Use quick-add below to log your first transaction</p>
+            <ReceiptText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-bold text-slate-500">No expenses recorded for this month</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Use quick-add below to log your first transaction</p>
           </div>
         )}
       </div>
 
-      {/* 6. Budget Progress Bars */}
-      <div className="bg-white p-4 rounded-3xl border border-zinc-200/80 shadow-card">
+      {/* 8. Budget Progress Bars */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-card">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <PiggyBank className="w-4 h-4 text-brand-700" />
-            <h3 className="text-sm font-bold text-zinc-900 leading-tight">Monthly Budgets</h3>
+            <h3 className="text-sm font-bold text-slate-900 leading-tight">Monthly Budgets</h3>
           </div>
           <button
             onClick={() => setActiveTab('budgets')}
-            className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+            className="text-xs font-bold text-brand-700 hover:text-brand-800"
           >
             Manage
           </button>
@@ -428,24 +677,31 @@ export const DashboardView: React.FC = () => {
                 textStatus = 'text-rose-600 font-bold';
               } else if (pct >= b.alert_threshold) {
                 barColor = 'bg-amber-500';
-                textStatus = 'text-amber-700 font-semibold';
+                textStatus = 'text-amber-700 font-bold';
               }
 
               return (
-                <div key={b.id} className="space-y-1">
+                <div key={b.id} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      {cat && <CategoryIcon name={cat.icon} color={cat.color} size={14} />}
-                      <span className="font-bold text-zinc-800">{cat?.name || 'Overall Budget'}</span>
+                      {cat && (
+                        <div
+                          className="w-5 h-5 rounded-md flex items-center justify-center"
+                          style={{ backgroundColor: `${cat.color}15` }}
+                        >
+                          <CategoryIcon name={cat.icon} color={cat.color} size={12} />
+                        </div>
+                      )}
+                      <span className="font-bold text-slate-800">{cat?.name || 'Overall Budget'}</span>
                     </div>
                     <div className="text-right tabular-nums">
-                      <span className="font-bold text-zinc-900">{currSym}{spent.toLocaleString()}</span>
-                      <span className="text-zinc-400 font-normal"> / {currSym}{b.amount.toLocaleString()}</span>
+                      <span className="font-black text-slate-900">{currSym}{spent.toLocaleString()}</span>
+                      <span className="text-slate-400 font-medium"> / {currSym}{b.amount.toLocaleString()}</span>
                     </div>
                   </div>
 
                   {/* Progress bar container */}
-                  <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                       style={{ width: `${Math.min(pct, 100)}%` }}
@@ -453,8 +709,8 @@ export const DashboardView: React.FC = () => {
                   </div>
 
                   {/* Target line */}
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-0.5">
-                    <span>{Math.round(pct)}% used</span>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                    <span className="font-bold">{Math.round(pct)}% used</span>
                     <span className={textStatus}>
                       {pct > 100
                         ? `Over budget by ${currSym}${Math.round(spent - b.amount).toLocaleString()}`
@@ -467,7 +723,7 @@ export const DashboardView: React.FC = () => {
           </div>
         ) : (
           <div className="py-4 text-center">
-            <p className="text-xs text-zinc-500">No category budgets created yet.</p>
+            <p className="text-xs text-slate-500">No category budgets created yet.</p>
             <button
               onClick={() => setActiveTab('budgets')}
               className="mt-2 text-xs font-bold text-brand-700 inline-flex items-center gap-1"
@@ -479,19 +735,19 @@ export const DashboardView: React.FC = () => {
         )}
       </div>
 
-      {/* 7. Recent 5 Transactions */}
-      <div className="bg-white p-4 rounded-3xl border border-zinc-200/80 shadow-card">
+      {/* 9. Recent 5 Transactions */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-card">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-zinc-900 leading-tight">Recent Transactions</h3>
+          <h3 className="text-sm font-bold text-slate-900 leading-tight">Recent Transactions</h3>
           <button
             onClick={() => setActiveTab('transactions')}
-            className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+            className="text-xs font-bold text-brand-700 hover:text-brand-800"
           >
             View all ({transactions.length})
           </button>
         </div>
 
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-slate-100">
           {recentTransactions.map((t) => {
             const cat = categories.find((c) => c.id === t.category_id);
             const isExpense = t.kind === 'expense';
@@ -500,24 +756,24 @@ export const DashboardView: React.FC = () => {
               <div
                 key={t.id}
                 onClick={() => setEditingTransaction(t)}
-                className="py-2.5 flex items-center justify-between gap-3 hover:bg-zinc-50 px-2 rounded-2xl cursor-pointer transition-colors"
+                className="py-2.5 flex items-center justify-between gap-3 hover:bg-slate-50 px-2 rounded-2xl cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${cat?.color || '#0F766E'}18` }}
+                    style={{ backgroundColor: `${cat?.color || '#4F46E5'}15` }}
                   >
                     <CategoryIcon
                       name={cat?.icon || 'ReceiptText'}
-                      color={cat?.color || '#0F766E'}
+                      color={cat?.color || '#4F46E5'}
                       size={18}
                     />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-zinc-900 truncate">
+                    <p className="text-xs font-bold text-slate-900 truncate">
                       {t.merchant || 'Transaction'}
                     </p>
-                    <div className="flex items-center gap-2 text-[11px] text-zinc-500 mt-0.5">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
                       <span>{cat?.name || 'Category'}</span>
                       <span>•</span>
                       <span>{t.txn_date}</span>
@@ -528,7 +784,7 @@ export const DashboardView: React.FC = () => {
                 <div className="text-right shrink-0">
                   <span
                     className={`text-xs font-black tabular-nums ${
-                      isExpense ? 'text-zinc-900' : 'text-emerald-700'
+                      isExpense ? 'text-slate-900' : 'text-emerald-700'
                     }`}
                   >
                     {isExpense ? '−' : '+'}

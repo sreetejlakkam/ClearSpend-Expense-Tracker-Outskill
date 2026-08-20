@@ -141,8 +141,8 @@ export const TransactionsView: React.FC = () => {
       {/* Top Header & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 leading-tight">Ledger & History</h2>
-          <p className="text-xs text-zinc-500">
+          <h2 className="text-lg font-extrabold text-slate-900 leading-tight">Ledger & History</h2>
+          <p className="text-xs text-slate-500 font-medium">
             {filteredTransactions.length} transaction{filteredTransactions.length === 1 ? '' : 's'} recorded
           </p>
         </div>
@@ -150,7 +150,7 @@ export const TransactionsView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportTransactionsToCSV(transactions, categories, wallets, profile?.base_currency || 'INR')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-zinc-200/80 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs transition-all"
             title="Export CSV"
           >
             <Download className="w-3.5 h-3.5" />
@@ -162,10 +162,10 @@ export const TransactionsView: React.FC = () => {
               setIsMultiSelectMode(!isMultiSelectMode);
               setSelectedTxnIds([]);
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
               isMultiSelectMode
-                ? 'bg-brand-50 border-brand-300 text-brand-800'
-                : 'bg-white border-zinc-200/80 text-zinc-700 hover:bg-zinc-50 shadow-xs'
+                ? 'bg-brand-50 border-brand-300 text-brand-800 shadow-xs'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs'
             }`}
           >
             <CheckSquare className="w-3.5 h-3.5" />
@@ -174,7 +174,7 @@ export const TransactionsView: React.FC = () => {
 
           <button
             onClick={() => setIsManualModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold shadow-sm shadow-brand-700/20 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-700 to-indigo-600 hover:from-brand-800 hover:to-indigo-700 text-white text-xs font-extrabold shadow-md shadow-brand-700/20 transition-all active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add</span>
@@ -184,16 +184,16 @@ export const TransactionsView: React.FC = () => {
 
       {/* Multi-Select Floating Action Bar */}
       {isMultiSelectMode && (
-        <div className="p-3 bg-brand-900 text-white rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-150">
+        <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-top-2 duration-150 border border-slate-800">
           <div className="flex items-center gap-2">
             <button
               onClick={handleSelectAll}
-              className="text-xs font-bold text-teal-300 hover:text-white flex items-center gap-1"
+              className="text-xs font-extrabold text-indigo-300 hover:text-white flex items-center gap-1"
             >
               {selectedTxnIds.length === filteredTransactions.length ? 'Deselect All' : 'Select All'}
             </button>
-            <span className="text-xs text-zinc-300">•</span>
-            <span className="text-xs font-semibold text-white">
+            <span className="text-xs text-slate-500">•</span>
+            <span className="text-xs font-bold text-white">
               {selectedTxnIds.length} selected
             </span>
           </div>
@@ -222,7 +222,7 @@ export const TransactionsView: React.FC = () => {
                 setIsMultiSelectMode(false);
                 setSelectedTxnIds([]);
               }}
-              className="text-zinc-400 hover:text-white p-1"
+              className="text-slate-400 hover:text-white p-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -231,7 +231,8 @@ export const TransactionsView: React.FC = () => {
       )}
 
       {/* Filter Bar (Search + Dropdowns) */}
-      <div className="p-3 bg-white rounded-2xl border border-zinc-200/80 shadow-xs space-y-2.5">
+      <div className="p-3 bg-white rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
+
         {/* Search Input */}
         <div className="relative">
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />

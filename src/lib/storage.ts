@@ -11,17 +11,18 @@ import { generateFingerprint } from './parser';
 export const DEFAULT_CATEGORIES: Array<Omit<Category, 'user_id'>> = [
   { id: 'cat_food', name: 'Food & Dining', icon: 'Utensils', color: '#F97316', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_groceries', name: 'Groceries', icon: 'ShoppingCart', color: '#10B981', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
-  { id: 'cat_transport', name: 'Transport', icon: 'Car', color: '#3B82F6', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
+  { id: 'cat_transport', name: 'Transport', icon: 'Car', color: '#0284C7', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_shopping', name: 'Shopping', icon: 'ShoppingBag', color: '#EC4899', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
-  { id: 'cat_bills', name: 'Bills & Utilities', icon: 'Zap', color: '#EAB308', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
+  { id: 'cat_bills', name: 'Bills & Utilities', icon: 'Zap', color: '#F59E0B', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_rent', name: 'Rent', icon: 'Home', color: '#6366F1', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_health', name: 'Health', icon: 'HeartPulse', color: '#EF4444', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_entertainment', name: 'Entertainment', icon: 'Film', color: '#8B5CF6', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
-  { id: 'cat_education', name: 'Education', icon: 'GraduationCap', color: '#14B8A6', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
+  { id: 'cat_education', name: 'Education', icon: 'GraduationCap', color: '#0D9488', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_other', name: 'Other', icon: 'MoreHorizontal', color: '#64748B', kind: 'expense', is_default: true, created_at: new Date().toISOString() },
   { id: 'cat_salary', name: 'Salary', icon: 'Briefcase', color: '#059669', kind: 'income', is_default: true, created_at: new Date().toISOString() },
-  { id: 'cat_other_income', name: 'Other Income', icon: 'ArrowDownToLine', color: '#0D9488', kind: 'income', is_default: true, created_at: new Date().toISOString() },
+  { id: 'cat_other_income', name: 'Other Income', icon: 'ArrowDownToLine', color: '#3B82F6', kind: 'income', is_default: true, created_at: new Date().toISOString() },
 ];
+
 
 export function getInitialDemoState(userId: string = 'demo_user_1') {
   const profile: Profile = {

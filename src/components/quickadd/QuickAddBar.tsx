@@ -70,7 +70,7 @@ export const QuickAddBar: React.FC = () => {
           particleCount: 25,
           spread: 40,
           origin: { y: 0.9 },
-          colors: ['#0F766E', '#10B981', '#F59E0B'],
+          colors: ['#4F46E5', '#10B981', '#F59E0B'],
         });
       } catch {}
 
@@ -129,22 +129,22 @@ export const QuickAddBar: React.FC = () => {
   const getConfidenceBadge = (confidence: number = 0.5) => {
     if (confidence >= 0.8) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           High Confidence
         </span>
       );
     } else if (confidence >= 0.5) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
           Check This
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 border border-zinc-300">
-          <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
           Guess (Verify)
         </span>
       );
@@ -156,26 +156,26 @@ export const QuickAddBar: React.FC = () => {
       <div className="max-w-md mx-auto pointer-events-auto">
         {/* Optimistic Parsing Skeleton */}
         {isParsing && (
-          <div className="mb-2 p-3.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-modal border border-brand-200/80 animate-in slide-in-from-bottom-2 duration-150">
+          <div className="mb-2 p-3.5 bg-white/95 backdrop-blur-xl rounded-2xl shadow-modal border border-brand-200/80 animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-brand-700 font-semibold text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-brand-700" />
+              <div className="flex items-center gap-2 text-brand-700 font-bold text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
                 <span>AI parsing sentence & categorizing…</span>
               </div>
-              <span className="text-[10px] text-zinc-400 font-mono">gemini-2.5-flash</span>
+              <span className="text-[10px] text-slate-400 font-mono">gemini-2.5-flash</span>
             </div>
             <div className="mt-2 flex gap-2">
-              <div className="h-6 w-16 bg-zinc-200/80 rounded-lg animate-pulse" />
-              <div className="h-6 w-28 bg-zinc-200/80 rounded-lg animate-pulse" />
-              <div className="h-6 w-20 bg-zinc-200/80 rounded-lg animate-pulse" />
+              <div className="h-6 w-16 bg-slate-200/70 rounded-lg animate-pulse" />
+              <div className="h-6 w-28 bg-slate-200/70 rounded-lg animate-pulse" />
+              <div className="h-6 w-20 bg-slate-200/70 rounded-lg animate-pulse" />
             </div>
           </div>
         )}
 
         {/* Confirmation Card with Inline Editable Fields */}
         {parsedCard && !isParsing && (
-          <div className="mb-2 p-4 bg-white/98 backdrop-blur-xl rounded-3xl shadow-modal border-2 border-brand-600/60 animate-in slide-in-from-bottom-3 duration-200">
-            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-100">
+          <div className="mb-2 p-4 bg-white/98 backdrop-blur-2xl rounded-3xl shadow-modal border-2 border-brand-600/60 animate-in slide-in-from-bottom-3 duration-200">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-brand-800 flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-brand-600" />
@@ -185,7 +185,7 @@ export const QuickAddBar: React.FC = () => {
               </div>
               <button
                 onClick={() => setParsedCard(null)}
-                className="text-zinc-400 hover:text-zinc-700 p-1 rounded-lg hover:bg-zinc-100"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -194,7 +194,7 @@ export const QuickAddBar: React.FC = () => {
             {/* Main editable amount & type */}
             <div className="mt-3 flex items-center justify-between gap-3">
               <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold text-zinc-600">{currSymbol}</span>
+                <span className="text-xl font-bold text-slate-500">{currSymbol}</span>
                 <input
                   type="number"
                   step="any"
@@ -202,19 +202,19 @@ export const QuickAddBar: React.FC = () => {
                   onChange={(e) =>
                     setParsedCard({ ...parsedCard, amount: Math.abs(parseFloat(e.target.value) || 0) })
                   }
-                  className="text-2xl font-extrabold text-zinc-900 w-32 border-b-2 border-dashed border-zinc-300 focus:border-brand-600 focus:outline-hidden py-0.5 tabular-nums bg-transparent"
+                  className="text-2xl font-black text-slate-900 w-32 border-b-2 border-dashed border-slate-300 focus:border-brand-600 focus:outline-hidden py-0.5 tabular-nums bg-transparent"
                 />
               </div>
 
               {/* Expense vs Income Toggle */}
-              <div className="flex bg-zinc-100 p-0.5 rounded-xl border border-zinc-200">
+              <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200">
                 <button
                   type="button"
                   onClick={() => setParsedCard({ ...parsedCard, kind: 'expense' })}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all ${
                     parsedCard.kind === 'expense'
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'text-zinc-600 hover:text-zinc-900'
+                      ? 'bg-rose-500 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Expense
@@ -222,10 +222,10 @@ export const QuickAddBar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setParsedCard({ ...parsedCard, kind: 'income' })}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all ${
                     parsedCard.kind === 'income'
                       ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-zinc-600 hover:text-zinc-900'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Income
@@ -240,7 +240,7 @@ export const QuickAddBar: React.FC = () => {
                 value={parsedCard.merchant}
                 onChange={(e) => setParsedCard({ ...parsedCard, merchant: e.target.value })}
                 placeholder="Merchant / Item name"
-                className="w-full text-xs font-semibold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl px-2.5 py-1.5 focus:border-brand-600 focus:outline-hidden"
+                className="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:border-brand-600 focus:outline-hidden"
               />
             </div>
 
@@ -248,14 +248,14 @@ export const QuickAddBar: React.FC = () => {
             <div className="mt-2.5 grid grid-cols-3 gap-1.5">
               {/* Category selector */}
               <div className="col-span-1">
-                <label className="text-[10px] font-semibold text-zinc-500 block mb-0.5">Category</label>
+                <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Category</label>
                 <select
                   value={parsedCard.category_id}
                   onChange={(e) => setParsedCard({ ...parsedCard, category_id: e.target.value })}
-                  className={`w-full text-xs font-semibold bg-zinc-50 border rounded-xl px-2 py-1.5 focus:outline-hidden truncate ${
+                  className={`w-full text-xs font-bold bg-slate-50 border rounded-xl px-2 py-1.5 focus:outline-hidden truncate ${
                     initialSuggestedCatId !== parsedCard.category_id
                       ? 'border-brand-500 bg-brand-50 text-brand-900'
-                      : 'border-zinc-200 text-zinc-800'
+                      : 'border-slate-200 text-slate-800'
                   }`}
                 >
                   {categories
@@ -270,11 +270,11 @@ export const QuickAddBar: React.FC = () => {
 
               {/* Wallet selector */}
               <div className="col-span-1">
-                <label className="text-[10px] font-semibold text-zinc-500 block mb-0.5">Wallet</label>
+                <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Wallet</label>
                 <select
                   value={parsedCard.wallet_id || wallets[0]?.id}
                   onChange={(e) => setParsedCard({ ...parsedCard, wallet_id: e.target.value })}
-                  className="w-full text-xs font-semibold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-1.5 focus:outline-hidden truncate"
+                  className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 focus:outline-hidden truncate"
                 >
                   {wallets.map((w) => (
                     <option key={w.id} value={w.id}>
@@ -286,12 +286,12 @@ export const QuickAddBar: React.FC = () => {
 
               {/* Date selector */}
               <div className="col-span-1">
-                <label className="text-[10px] font-semibold text-zinc-500 block mb-0.5">Date</label>
+                <label className="text-[10px] font-bold text-slate-500 block mb-0.5">Date</label>
                 <input
                   type="date"
                   value={parsedCard.txn_date}
                   onChange={(e) => setParsedCard({ ...parsedCard, txn_date: e.target.value })}
-                  className="w-full text-xs font-semibold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl px-1.5 py-1.5 focus:outline-hidden"
+                  className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-1.5 py-1.5 focus:outline-hidden"
                 />
               </div>
             </div>
@@ -304,7 +304,7 @@ export const QuickAddBar: React.FC = () => {
                   setIsManualModalOpen(true);
                   setParsedCard(null);
                 }}
-                className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 transition-colors flex items-center gap-1"
+                className="text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition-colors flex items-center gap-1"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Add Details
@@ -314,7 +314,7 @@ export const QuickAddBar: React.FC = () => {
                 type="button"
                 onClick={handleSaveParsed}
                 disabled={isSaving}
-                className="flex-1 bg-brand-700 hover:bg-brand-800 active:scale-98 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-brand-700/20 flex items-center justify-center gap-1.5 transition-all"
+                className="flex-1 bg-gradient-to-r from-brand-700 to-indigo-600 hover:from-brand-800 hover:to-indigo-700 active:scale-98 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl shadow-md shadow-brand-700/25 flex items-center justify-center gap-1.5 transition-all"
               >
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -332,7 +332,7 @@ export const QuickAddBar: React.FC = () => {
         {/* The Signature Quick-Add Input Bar */}
         <form
           onSubmit={handleParse}
-          className="relative flex items-center bg-white/95 backdrop-blur-xl border-2 border-brand-600/70 focus-within:border-brand-700 rounded-2xl shadow-xl shadow-brand-950/10 p-1.5 transition-all"
+          className="relative flex items-center bg-white/95 backdrop-blur-2xl border-2 border-brand-600/70 focus-within:border-brand-700 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 transition-all"
         >
           <div className="pl-3 pr-2 text-brand-600 flex items-center justify-center">
             <Sparkles className="w-4 h-4 animate-pulse text-brand-600" />
@@ -345,7 +345,7 @@ export const QuickAddBar: React.FC = () => {
             onChange={(e) => setInputVal(e.target.value)}
             placeholder="Type e.g. '380 zomato lunch' or '2k rent yesterday'…"
             disabled={isParsing}
-            className="flex-1 text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 bg-transparent focus:outline-hidden py-1.5 pr-2 min-w-0"
+            className="flex-1 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-hidden py-1.5 pr-2 min-w-0"
           />
 
           <div className="flex items-center gap-1">
@@ -367,7 +367,7 @@ export const QuickAddBar: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsManualModalOpen(true)}
-              className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               title="Manual Form"
             >
               <SlidersHorizontal className="w-4 h-4" />
@@ -378,3 +378,4 @@ export const QuickAddBar: React.FC = () => {
     </div>
   );
 };
+

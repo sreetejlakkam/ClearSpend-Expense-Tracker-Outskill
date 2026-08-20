@@ -6,7 +6,7 @@ export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, pendingReviewCount } = useStore();
 
   const navItems = [
-    { id: 'dashboard', label: 'Home', icon: LayoutGrid },
+    { id: 'dashboard', label: 'Overview', icon: LayoutGrid },
     { id: 'transactions', label: 'Ledger', icon: ReceiptText },
     { id: 'budgets', label: 'Budgets', icon: PiggyBank },
     { id: 'insights', label: 'Insights', icon: Sparkles },
@@ -16,12 +16,12 @@ export const BottomNav: React.FC = () => {
       icon: ShieldCheck,
       badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
     },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'Accounts', icon: Settings },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-zinc-200/80 shadow-sticky-bar">
-      <div className="max-w-md mx-auto px-2 py-1.5 flex items-center justify-around">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-4px_24px_-4px_rgba(15,23,42,0.08)]">
+      <div className="max-w-md mx-auto px-3 py-2 flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -29,24 +29,21 @@ export const BottomNav: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+              className={`relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all ${
                 isActive
-                  ? 'text-brand-700 font-bold scale-105'
-                  : 'text-zinc-500 hover:text-zinc-800 font-medium'
+                  ? 'bg-brand-50/90 text-brand-700 font-extrabold shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 font-medium hover:bg-slate-100/50'
               }`}
             >
               <div className="relative">
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'stroke-[2.4px]' : 'stroke-[1.8px]'}`} />
+                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'stroke-[2.5px] scale-105' : 'stroke-[1.8px]'}`} />
                 {item.badge && (
-                  <span className="absolute -top-1 -right-2 bg-amber-500 text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1 -right-2.5 bg-amber-500 text-white text-[10px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse shadow-xs">
                     {item.badge}
                   </span>
                 )}
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">{item.label}</span>
-              {isActive && (
-                <span className="absolute bottom-0 w-4 h-0.5 bg-brand-700 rounded-full" />
-              )}
             </button>
           );
         })}
@@ -54,3 +51,4 @@ export const BottomNav: React.FC = () => {
     </nav>
   );
 };
+
