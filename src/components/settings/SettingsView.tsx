@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
+import { useTheme } from '../../lib/theme';
+
 import { exportTransactionsToCSV } from '../../lib/csv';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { Modal } from '../common/Modal';
@@ -15,7 +18,13 @@ import {
   BrainCircuit,
   Database,
   Globe,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon,
+  Monitor,
+  Languages,
+  TrendingUp,
+  ArrowRight
 } from 'lucide-react';
 
 import { Category, TransactionKind, Wallet, WalletType } from '../../types';
@@ -33,6 +42,8 @@ const PRESET_COLORS = [
 ];
 
 export const SettingsView: React.FC = () => {
+  const { t, language, setLanguage } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const {
     profile,
     updateProfile,
@@ -48,6 +59,7 @@ export const SettingsView: React.FC = () => {
     transactions,
     resetToDemoData,
     logout,
+    setActiveTab
   } = useStore();
 
   // Category Modal State
@@ -161,34 +173,166 @@ export const SettingsView: React.FC = () => {
   return (
     <div className="space-y-6 pb-28">
       <div>
-        <h2 className="text-lg font-bold text-zinc-900 leading-tight">Settings & Accounts</h2>
-        <p className="text-xs text-zinc-500">
-          Manage currency, wallets, categories, and AI learning rules
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+          {t('settings.title', 'Settings & Accounts')}
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Manage language, theme, currency, wallets, and AI rules
         </p>
       </div>
 
-      {/* 1. Profile & Base Currency */}
-      <div className="p-5 bg-white rounded-3xl border border-zinc-200/80 shadow-card space-y-4">
+      {/* 1. Theme & Appearance Selector */}
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3">
+        <div className="flex items-center gap-2">
+          <Sun className="w-4 h-4 text-amber-500" />
+          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+            {t('settings.appearance', 'Appearance & Theme')}
+          </h3>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setTheme('light')}
+            className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+              theme === 'light'
+                ? 'bg-brand-50 dark:bg-brand-950/60 border-brand-500 text-brand-700 dark:text-brand-300 shadow-xs ring-1 ring-brand-500'
+                : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <Sun className="w-5 h-5 text-amber-500" />
+            <span>{t('settings.theme_light', 'Light Mode')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTheme('dark')}
+            className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+              theme === 'dark'
+                ? 'bg-slate-900 border-indigo-500 text-white shadow-xs ring-1 ring-indigo-500'
+                : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <Moon className="w-5 h-5 text-indigo-400" />
+            <span>{t('settings.theme_dark', 'Dark Mode')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTheme('system')}
+            className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+              theme === 'system'
+                ? 'bg-brand-50 dark:bg-brand-950/60 border-brand-500 text-brand-700 dark:text-brand-300 shadow-xs ring-1 ring-brand-500'
+                : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <Monitor className="w-5 h-5 text-slate-500" />
+            <span>{t('settings.theme_system', 'System Auto')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Language Selector (English, Telugu, Hindi) */}
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Languages className="w-4 h-4 text-brand-600" />
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+              {t('settings.language_title', 'App Language / భాష / भाषा')}
+            </h3>
+          </div>
+          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+            {language.toUpperCase()}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+              language === 'en'
+                ? 'bg-brand-50 dark:bg-brand-950/60 border-brand-500 text-brand-700 dark:text-brand-300 shadow-xs ring-1 ring-brand-500'
+                : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <span className="text-base">🇬🇧</span>
+            <span>English</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('te')}
+            className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+              language === 'te'
+                ? 'bg-brand-50 dark:bg-brand-950/60 border-brand-500 text-brand-700 dark:text-brand-300 shadow-xs ring-1 ring-brand-500'
+                : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <span className="text-base">🇮🇳</span>
+            <span>తెలుగు (Telugu)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('hi')}
+            className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+              language === 'hi'
+                ? 'bg-brand-50 dark:bg-brand-950/60 border-brand-500 text-brand-700 dark:text-brand-300 shadow-xs ring-1 ring-brand-500'
+                : 'bg-slate-50 dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <span className="text-base">🇮🇳</span>
+            <span>हिन्दी (Hindi)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Power of Compounding Visualizer Launcher */}
+      <div
+        onClick={() => setActiveTab('compounding')}
+        className="cursor-pointer p-5 bg-gradient-to-br from-emerald-700 via-teal-800 to-emerald-950 text-white rounded-3xl shadow-lg border border-emerald-500/30 flex items-center justify-between gap-3 group hover:scale-[1.01] transition-all"
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-white">
+                {t('dash.compounding_card_title', 'Power of Compounding Visualizer')}
+              </h3>
+              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-white/20 text-emerald-100">
+                Wealth Tool
+              </span>
+            </div>
+            <p className="text-xs text-emerald-100 mt-0.5">
+              {t('dash.compounding_card_desc', 'See how redirecting ₹2,000/month of discretionary spend can grow to ₹20+ Lakhs!')}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-xs font-bold bg-white/20 group-hover:bg-white/30 px-3 py-1.5 rounded-xl transition-all shrink-0">
+          <span>Open</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
+      {/* 4. Profile & Base Currency */}
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-brand-700 text-white flex items-center justify-center font-bold text-base shadow-sm">
             {profile?.display_name?.charAt(0) || 'U'}
           </div>
           <div>
-            <h4 className="text-sm font-bold text-zinc-900">{profile?.display_name || 'User'}</h4>
-            <p className="text-xs text-zinc-500">{profile?.email}</p>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">{profile?.display_name || 'User'}</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{profile?.email}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1 flex items-center gap-1.5">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-brand-700" />
-              Base Currency
+              {t('settings.currency_title', 'Base Currency')}
             </label>
             <select
               value={profile?.base_currency || 'INR'}
               onChange={handleCurrencyChange}
-              className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 border border-zinc-300 rounded-xl focus:border-brand-700 focus:outline-hidden"
+              className="w-full text-xs font-semibold px-3 py-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-xl focus:border-brand-700 focus:outline-hidden"
             >
               <option value="INR">₹ INR (Indian Rupee)</option>
               <option value="USD">$ USD (US Dollar)</option>
@@ -198,6 +342,7 @@ export const SettingsView: React.FC = () => {
               <option value="SGD">S$ SGD (Singapore Dollar)</option>
             </select>
           </div>
+
 
           <div>
             <label className="block text-xs font-bold text-zinc-700 mb-1 flex items-center gap-1.5">

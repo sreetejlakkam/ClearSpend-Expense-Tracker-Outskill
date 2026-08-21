@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 import {
   ChatMessage,
   buildFinancialContext,
@@ -21,18 +22,19 @@ import {
 
 const INITIAL_PROMPTS = [
   { icon: '🍔', label: 'How much did I spend on Zomato & Swiggy?' },
+  { icon: '📈', label: 'What if I invest ₹2,000 monthly over 20 years?' },
   { icon: '🏆', label: 'What was my highest expense this month?' },
   { icon: '🏦', label: 'What is my HDFC Bank balance?' },
   { icon: '🛍️', label: 'Can I afford to buy a ₹10,000 gadget?' },
   { icon: '⚡', label: 'What is my daily burn rate and runway?' },
   { icon: '📊', label: 'Where did I spend the most this month?' },
   { icon: '💡', label: 'Give me 3 actionable tips to cut spending' },
-  { icon: '🎯', label: 'Am I on track with my budgets?' },
 ];
 
-
 export const FinAIView: React.FC = () => {
+  const { language } = useTranslation();
   const {
+
     profile,
     wallets,
     categories,
@@ -63,21 +65,45 @@ export const FinAIView: React.FC = () => {
   const netBalance = totalEarned - totalSpent;
   const savingsRate = totalEarned > 0 ? Math.max(0, Math.round(((totalEarned - totalSpent) / totalEarned) * 100)) : 0;
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'finai',
-      text: `👋 Hi **${profile?.display_name || 'there'}**! I'm **FinAI**, your AI Financial Copilot.
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    let welcomeText = `👋 Hi **${profile?.display_name || 'there'}**! I'm **FinAI**, your AI Financial Copilot.
 
 I have analyzed your **${selectedMonthStr}** ledger:
 - **Income:** **${currSym}${totalEarned.toLocaleString()}**
 - **Expenses:** **${currSym}${totalSpent.toLocaleString()}**
 - **Savings Rate:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} saved)
 
-Ask me anything about your spending patterns, how to optimize budgets, or tap a suggestion below!`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+Ask me anything about your spending patterns, compounding investments, or tap a suggestion below!`;
+
+    if (language === 'te') {
+      welcomeText = `👋 నమస్తే **${profile?.display_name || 'గారు'}**! నేను **ఫిన్‌ఏఐ**, మీ వ్యక్తిగత ఆర్థిక కోపైలట్.
+
+మీ **${selectedMonthStr}** లావాదేవీల సారాంశం:
+- **ఆదాయం:** **${currSym}${totalEarned.toLocaleString()}**
+- **ఖర్చులు:** **${currSym}${totalSpent.toLocaleString()}**
+- **పొదుపు రేటు:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} నికర పొదుపు)
+
+మీ ఖర్చుల వివరాలు లేదా చక్రవడ్డీ పెట్టుబడి లెక్కల గురించి నన్ను అడగండి!`;
+    } else if (language === 'hi') {
+      welcomeText = `👋 नमस्ते **${profile?.display_name || 'जी'}**! मैं **फिनएआई** हूँ, आपका एआई वित्तीय कोपायलट।
+
+आपके **${selectedMonthStr}** का ब्योरा:
+- **आय:** **${currSym}${totalEarned.toLocaleString()}**
+- **खर्च:** **${currSym}${totalSpent.toLocaleString()}**
+- **बचत दर:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} शुद्ध बचत)
+
+अपने खर्चों, बजट या कंपाउंडिंग निवेश के बारे में कुछ भी पूछें!`;
+    }
+
+    return [
+      {
+        id: 'welcome',
+        sender: 'finai',
+        text: welcomeText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ];
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -114,17 +140,22 @@ Ask me anything about your spending patterns, how to optimize budgets, or tap a 
         selectedMonthStr
       );
 
-      const aiReply = await queryGeminiAI(text, financialContext, apiKey, {
-        profile,
-        wallets,
-        categories,
-        transactions,
-        budgets,
-        selectedMonthStr,
-      });
+      const aiReply = await queryGeminiAI(
+        text,
+        financialContext,
+        apiKey,
+        {
+          profile,
+          wallets,
+          categories,
+          transactions,
+          budgets,
+          selectedMonthStr,
+        },
+        language
+      );
 
       const botMsg: ChatMessage = {
-
         id: (Date.now() + 1).toString(),
         sender: 'finai',
         text: aiReply,
@@ -142,6 +173,7 @@ Ask me anything about your spending patterns, how to optimize budgets, or tap a 
       setIsLoading(false);
     }
   };
+
 
   const handleSaveApiKey = (e: React.FormEvent) => {
     e.preventDefault();

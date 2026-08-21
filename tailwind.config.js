@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -8,8 +9,13 @@ export default {
     extend: {
       colors: {
         background: '#F6F8FC', // BudgetBakers-style soft airy financial canvas
-        foreground: '#0F172A', // Deep slate for razor-sharp typography
+        'background-dark': '#0B0F19', // Deep OLED obsidian
+        foreground: '#0F172A',
+        'foreground-dark': '#F8FAFC',
         surface: '#FFFFFF',
+        'surface-dark': '#111827',
+        'card-dark': '#1E293B',
+
         brand: {
           50: '#EEF2FF',
           100: '#E0E7FF',

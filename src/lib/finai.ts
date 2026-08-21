@@ -109,23 +109,32 @@ export async function queryGeminiAI(
     transactions: Transaction[];
     budgets: Budget[];
     selectedMonthStr: string;
-  }
+  },
+  language: 'en' | 'te' | 'hi' = 'en'
 ): Promise<string> {
   const key = apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('clearspend_gemini_key') || '';
 
   if (!key) {
     // Fall back to intelligent local financial inference
-    return generateDeterministicFinAIResponse(prompt, state);
+    return generateDeterministicFinAIResponse(prompt, state, language);
   }
 
+  const langInstruction = language === 'te'
+    ? 'IMPORTANT: Respond fluently in Telugu (తెలుగు లిపి) with bold numbers and bullet points.'
+    : language === 'hi'
+    ? 'IMPORTANT: Respond fluently in Hindi (हिन्दी देवनागरी लिपि) with bold numbers and bullet points.'
+    : 'Respond in English with bold numbers and bullet points.';
+
   const systemInstruction = `You are FinAI, an expert, encouraging, and data-driven personal financial copilot in the ClearSpend app.
+${langInstruction}
 CRITICAL INSTRUCTION:
 - You have access to the user's REAL financial ledger transactions provided below.
 - ALWAYS answer the user's SPECIFIC question with exact figures, dates, and names from the ledger.
 - If asked about a specific merchant (e.g. Zomato, Swiggy, Uber), find and list all occurrences, sum them up, and calculate their % of spend.
-- If asked about an account, category, date, or affordability, compute the exact mathematical result.
+- If asked about compounding, SIP, or opportunity cost (e.g. investing ₹2,000 monthly over 5, 10, 20 years at 12% CAGR), perform exact compounding math (FV = P * [((1+i)^n - 1)/i] * (1+i)).
 - Format responses cleanly with bold numbers, bullet points, and actionable advice.
 - Keep tone professional, encouraging, and practical.`;
+
 
   const requestBody = {
     contents: [
@@ -187,10 +196,17 @@ export function generateDeterministicFinAIResponse(
     transactions: Transaction[];
     budgets: Budget[];
     selectedMonthStr: string;
-  }
+  },
+  language: 'en' | 'te' | 'hi' = 'en'
 ): string {
   if (!state) {
-    return `### 🤖 FinAI Assistant\n\nI can analyze your spending patterns, audit specific merchants (like Zomato, Swiggy, Uber), check category budgets, and calculate purchase affordability. What would you like to know?`;
+    if (language === 'te') {
+      return `### 🤖 ఫిన్‌ఏఐ అసిస్టెంట్\n\nమీ ఖర్చుల వివరాలు, నిర్దిష్ట వ్యాపారుల ఖర్చులు (జొమాటో, స్విగ్గీ), బడ్జెట్ పరిమితులు లేదా చక్రవడ్డీ (SIP) పెట్టుబడి లెక్కలను అడగండి!`;
+    }
+    if (language === 'hi') {
+      return `### 🤖 फिनएआई सहायक\n\nअपने खर्चों का विवरण, विशेष मर्चेंट खर्च (ज़ोमैटो, स्विगी), बजट सीमा या चक्रवृद्धि (SIP) निवेश गणना के बारे में पूछें!`;
+    }
+    return `### 🤖 FinAI Assistant\n\nI can analyze your spending patterns, audit specific merchants (like Zomato, Swiggy, Uber), check category budgets, and calculate compounding wealth growth. What would you like to know?`;
   }
 
   const { profile, wallets, categories, transactions, budgets, selectedMonthStr } = state;
@@ -205,6 +221,46 @@ export function generateDeterministicFinAIResponse(
   const totalEarned = monthTxns.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0);
   const netBalance = totalEarned - totalSpent;
   const savingsRate = totalEarned > 0 ? Math.max(0, Math.round((netBalance / totalEarned) * 100)) : 0;
+
+  // 0. COMPOUNDING & SIP WEALTH POTENTIAL QUERY
+  if (
+    p.includes('compound') ||
+    p.includes('invest') ||
+    p.includes('sip') ||
+    p.includes('wealth') ||
+    p.includes('opportunity cost') ||
+    p.includes('power of') ||
+    p.includes('future value')
+  ) {
+    // Extract monthly amount if specified, else default to 2000
+    const amtMatch = p.match(/(?:invest|sip|save|spend|costing|of|₹|rs\.?)\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?k?)/i);
+    let monthlySip = 2000;
+    if (amtMatch) {
+      let raw = amtMatch[1].replace(/,/g, '').toLowerCase();
+      if (raw.endsWith('k')) {
+        monthlySip = parseFloat(raw.replace('k', '')) * 1000;
+      } else {
+        monthlySip = parseFloat(raw) || 2000;
+      }
+    }
+
+    const calc10 = (monthlySip * ((Math.pow(1 + 0.12/12, 120) - 1) / (0.12/12)) * (1 + 0.12/12));
+    const calc20 = (monthlySip * ((Math.pow(1 + 0.12/12, 240) - 1) / (0.12/12)) * (1 + 0.12/12));
+    const calc30 = (monthlySip * ((Math.pow(1 + 0.12/12, 360) - 1) / (0.12/12)) * (1 + 0.12/12));
+
+    const fmt = (v: number) => v >= 10000000 ? `₹${(v/10000000).toFixed(2)} Cr` : `₹${(v/100000).toFixed(2)} Lakhs`;
+
+    if (language === 'te') {
+      return `### 📈 చక్రవడ్డీ శక్తి (Power of Compounding)\n\nమీరు నెలకు **${currSym}${monthlySip.toLocaleString()}** పొదుపు చేసి 12% వార్షిక రాబడి (Nifty Index / Mutual Fund) తో ఇన్వెస్ట్ చేస్తే:\n\n- **10 సంవత్సరాలలో:** **${fmt(calc10)}** (పెట్టుబడి: ${currSym}${(monthlySip * 120).toLocaleString()})\n- **20 సంవత్సరాలలో:** **${fmt(calc20)}** (పెట్టుబడి: ${currSym}${(monthlySip * 240).toLocaleString()})\n- **30 సంవత్సరాలలో:** **${fmt(calc30)}** (పెట్టుబడి: ${currSym}${(monthlySip * 360).toLocaleString()})\n\n💡 **ముఖ్య గమనిక:** చిన్న చిన్న అనవసర ఖర్చులను (ఉదాహరణకు వీకెండ్ డెలివరీలు లేదా అదనపు సబ్‌స్క్రిప్షన్‌లు) క్రమశిక్షణతో పెట్టుబడిగా మలిస్తే 20 ఏళ్లలో **${fmt(calc20)}** పెద్ద సంపదను సృష్టిస్తుంది!`;
+    }
+
+    if (language === 'hi') {
+      return `### 📈 कंपाउंडिंग की शक्ति (Power of Compounding)\n\nयदि आप हर महीने **${currSym}${monthlySip.toLocaleString()}** बचाकर 12% वार्षिक रिटर्न (Nifty Index Fund) में निवेश करते हैं:\n\n- **10 वर्षों में:** **${fmt(calc10)}** (कुल निवेश: ${currSym}${(monthlySip * 120).toLocaleString()})\n- **20 वर्षों में:** **${fmt(calc20)}** (कुल निवेश: ${currSym}${(monthlySip * 240).toLocaleString()})\n- **30 वर्षों में:** **${fmt(calc30)}** (कुल निवेश: ${currSym}${(monthlySip * 360).toLocaleString()})\n\n💡 **महत्वपूर्ण सीख:** छोटे-छोटे दैनिक गैर-जरूरी खर्चों को रोककर 20 साल में **${fmt(calc20)}** का विशाल फंड बनाया जा सकता है!`;
+    }
+
+    return `### 📈 The Power of Compounding Visualizer\n\nIf you redirect **${currSym}${monthlySip.toLocaleString()}/month** of avoidable spending into a standard 12% CAGR equity index fund / SIP:\n\n- **In 10 Years:** **${fmt(calc10)}** (Capital Invested: ${currSym}${(monthlySip * 120).toLocaleString()})\n- **In 20 Years:** **${fmt(calc20)}** (Capital Invested: ${currSym}${(monthlySip * 240).toLocaleString()}) — **4.2× Multiplier!**\n- **In 30 Years:** **${fmt(calc30)}** (Capital Invested: ${currSym}${(monthlySip * 360).toLocaleString()}) — **9.8× Multiplier!**\n\n💡 **Key Takeaway:** An avoidable expense of ${currSym}${monthlySip.toLocaleString()} is not just ₹${monthlySip} lost today — it is **${fmt(calc20)}** of lost future wealth over 20 years!`;
+  }
+
 
   // 1. SPECIFIC MERCHANT QUERY (e.g. "how much did I spend on Zomato / Swiggy / Zepto / Rent / Uber / etc.")
   // Look for any merchant name in user's prompt

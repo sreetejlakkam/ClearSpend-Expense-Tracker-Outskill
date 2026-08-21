@@ -12,6 +12,7 @@ import { TransactionsView } from './components/transactions/TransactionsView';
 import { BudgetsView } from './components/budgets/BudgetsView';
 import { InsightsView } from './components/insights/InsightsView';
 import { FinAIView } from './components/finai/FinAIView';
+import { CompoundingView } from './components/compounding/CompoundingView';
 import { ReviewInboxView } from './components/review/ReviewInboxView';
 import { SettingsView } from './components/settings/SettingsView';
 
@@ -40,7 +41,7 @@ export const AppContent: React.FC = () => {
 
   // Main App Interface
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-brand-100 selection:text-brand-900">
+    <div className="min-h-screen bg-background dark:bg-background-dark text-foreground dark:text-foreground-dark flex flex-col font-sans selection:bg-brand-100 selection:text-brand-900 transition-colors duration-150">
       {/* Top Header */}
       <Header />
 
@@ -50,6 +51,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'transactions' && <TransactionsView />}
         {activeTab === 'budgets' && <BudgetsView />}
         {activeTab === 'finai' && <FinAIView />}
+        {activeTab === 'compounding' && <CompoundingView />}
         {activeTab === 'insights' && <InsightsView />}
         {activeTab === 'review' && <ReviewInboxView />}
         {activeTab === 'settings' && <SettingsView />}
@@ -57,6 +59,7 @@ export const AppContent: React.FC = () => {
 
       {/* Sticky Signature Quick-Add Bar */}
       <QuickAddBar />
+
 
 
       {/* Sticky Bottom Navigation Bar */}

@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
+import { formatIndianCurrency } from '../../lib/compounding';
 import { exportTransactionsToCSV } from '../../lib/csv';
 import { CategoryIcon } from '../common/CategoryIcon';
 import {
@@ -12,11 +14,13 @@ import {
   Square,
   X,
   Sparkles,
-  ReceiptText
+  ReceiptText,
+  TrendingUp
 } from 'lucide-react';
 import { Transaction } from '../../types';
 
 export const TransactionsView: React.FC = () => {
+  const { t } = useTranslation();
   const {
     transactions,
     categories,
@@ -29,7 +33,9 @@ export const TransactionsView: React.FC = () => {
     setIsManualModalOpen,
     bulkRecategorize,
     bulkDeleteTransactions,
+    setActiveTab,
   } = useStore();
+
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWalletFilter, setSelectedWalletFilter] = useState<string>('all');
@@ -141,7 +147,9 @@ export const TransactionsView: React.FC = () => {
       {/* Top Header & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
-          <h2 className="text-lg font-extrabold text-slate-900 leading-tight">Ledger & History</h2>
+          <h2 className="text-lg font-extrabold text-slate-900 leading-tight">
+            {t('nav.ledger', 'Ledger & History')}
+          </h2>
           <p className="text-xs text-slate-500 font-medium">
             {filteredTransactions.length} transaction{filteredTransactions.length === 1 ? '' : 's'} recorded
           </p>
@@ -154,7 +162,7 @@ export const TransactionsView: React.FC = () => {
             title="Export CSV"
           >
             <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Export CSV</span>
+            <span className="hidden sm:inline">{t('common.export', 'Export CSV')}</span>
           </button>
 
           <button
@@ -169,7 +177,7 @@ export const TransactionsView: React.FC = () => {
             }`}
           >
             <CheckSquare className="w-3.5 h-3.5" />
-            <span>Select</span>
+            <span>{t('common.select', 'Select')}</span>
           </button>
 
           <button
@@ -177,10 +185,11 @@ export const TransactionsView: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-brand-700 to-indigo-600 hover:from-brand-800 hover:to-indigo-700 text-white text-xs font-extrabold shadow-md shadow-brand-700/20 transition-all active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add</span>
+            <span>{t('common.add', 'Add')}</span>
           </button>
         </div>
       </div>
+
 
       {/* Multi-Select Floating Action Bar */}
       {isMultiSelectMode && (
@@ -426,6 +435,20 @@ export const TransactionsView: React.FC = () => {
                                   <span className="text-zinc-400 truncate max-w-[120px]">{t.note}</span>
                                 </>
                               )}
+                              {isExpense && t.amount >= 500 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveTab('compounding');
+                                  }}
+                                  className="inline-flex items-center gap-0.5 text-[9.5px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 px-1.5 py-0.2 rounded-md border border-emerald-200/70 transition-colors"
+                                  title="Calculate wealth if this monthly expense was invested in a 12% CAGR SIP"
+                                >
+                                  <TrendingUp className="w-2.5 h-2.5 text-emerald-600" />
+                                  <span>20y SIP: {formatIndianCurrency(t.amount * 9.99)}</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -443,6 +466,7 @@ export const TransactionsView: React.FC = () => {
                         </div>
                       </div>
                     );
+
                   })}
                 </div>
               </div>

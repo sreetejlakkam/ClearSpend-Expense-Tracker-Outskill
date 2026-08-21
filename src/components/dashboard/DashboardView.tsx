@@ -31,9 +31,11 @@ import {
   YAxis
 } from 'recharts';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 import { CategoryIcon } from '../common/CategoryIcon';
 
 export const DashboardView: React.FC = () => {
+  const { t } = useTranslation();
   const {
     transactions,
     categories,
@@ -49,6 +51,7 @@ export const DashboardView: React.FC = () => {
     setEditingTransaction,
     pendingReviewCount,
   } = useStore();
+
 
 
   const [activeChartTab, setActiveChartTab] = useState<'daily' | 'category'>('daily');
@@ -334,8 +337,38 @@ export const DashboardView: React.FC = () => {
         </div>
       </div>
 
+      {/* 2c. Power of Compounding & Wealth Opportunity Cost Card */}
+      <div
+        onClick={() => setActiveTab('compounding')}
+        className="cursor-pointer p-4 bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 hover:from-emerald-700 hover:via-teal-800 hover:to-slate-800 text-white rounded-3xl shadow-lg border border-emerald-500/30 flex items-center justify-between gap-3 group transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/25 group-hover:scale-105 transition-transform">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-white">
+                {t('dash.compounding_card_title', 'Power of Compounding Visualizer')}
+              </span>
+              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-white/20 text-emerald-100">
+                4.2x Multiplier
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-100/90 mt-0.5">
+              {t('dash.compounding_card_desc', 'See how redirecting ₹2,000/mo of avoidable spend can grow to ₹20+ Lakhs!')}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-xs font-bold text-emerald-200 group-hover:text-white bg-white/10 group-hover:bg-white/20 px-3 py-1.5 rounded-xl transition-all shrink-0">
+          <span>Simulate</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
       {/* 3. Account / Wallets Carousel (Money Manager & Wallet by BudgetBakers Style) */}
       <div className="space-y-2">
+
 
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
