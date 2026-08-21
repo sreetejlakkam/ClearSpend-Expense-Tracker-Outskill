@@ -345,13 +345,13 @@ export const SettingsView: React.FC = () => {
 
 
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1 flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5 text-brand-700" />
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5 text-brand-700 dark:text-brand-400" />
               Backend Sync Status
             </label>
-            <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl">
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
               <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500'}`} />
-              <span className="text-xs font-bold text-zinc-700">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                 {isSupabaseConfigured ? 'Connected to Supabase' : 'Local Offline Engine (Active)'}
               </span>
             </div>
@@ -360,44 +360,44 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* 2. Wallets & Payment Accounts */}
-      <div className="p-5 bg-white rounded-3xl border border-zinc-200/80 shadow-card space-y-3.5">
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <WalletIcon className="w-4 h-4 text-brand-700" />
-            <h3 className="text-sm font-bold text-zinc-900">Wallets & Accounts</h3>
+            <WalletIcon className="w-4 h-4 text-brand-700 dark:text-brand-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Wallets & Accounts</h3>
           </div>
           <button
             onClick={handleOpenWalletCreate}
-            className="flex items-center gap-1 text-xs font-bold text-brand-700 hover:text-brand-800"
+            className="flex items-center gap-1 text-xs font-bold text-brand-700 dark:text-brand-300 hover:text-brand-800"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Wallet
           </button>
         </div>
 
-        <div className="divide-y divide-zinc-100">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {wallets.map((w) => (
             <div key={w.id} className="py-2.5 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-zinc-900">{w.name}</p>
-                <p className="text-[11px] text-zinc-400 capitalize">{w.type} account</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">{w.name}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 capitalize">{w.type} account</p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold text-zinc-800 tabular-nums">
+                <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 tabular-nums">
                   {profile?.base_currency === 'INR' ? '₹' : profile?.base_currency}
                   {w.opening_balance.toLocaleString()}
                 </span>
                 <button
                   onClick={() => handleOpenWalletEdit(w)}
-                  className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg"
+                  className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 {wallets.length > 1 && (
                   <button
                     onClick={() => deleteWallet(w.id)}
-                    className="p-1 text-zinc-400 hover:text-rose-600 rounded-lg"
+                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -409,15 +409,15 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* 3. Expense Categories */}
-      <div className="p-5 bg-white rounded-3xl border border-zinc-200/80 shadow-card space-y-3.5">
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-brand-700" />
-            <h3 className="text-sm font-bold text-zinc-900">Expense Categories</h3>
+            <Tag className="w-4 h-4 text-brand-700 dark:text-brand-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Expense Categories</h3>
           </div>
           <button
             onClick={() => handleOpenCatCreate('expense')}
-            className="flex items-center gap-1 text-xs font-bold text-brand-700 hover:text-brand-800"
+            className="flex items-center gap-1 text-xs font-bold text-brand-700 dark:text-brand-300 hover:text-brand-800"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Category
@@ -430,22 +430,22 @@ export const SettingsView: React.FC = () => {
             .map((c) => (
               <div
                 key={c.id}
-                className="p-2.5 bg-zinc-50/80 rounded-2xl border border-zinc-200/60 flex items-center justify-between gap-2"
+                className="p-2.5 bg-slate-50/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex items-center justify-between gap-2"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <CategoryIcon name={c.icon} color={c.color} size={16} />
-                  <span className="text-xs font-bold text-zinc-800 truncate">{c.name}</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{c.name}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => handleOpenCatEdit(c)}
-                    className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg"
+                    className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg"
                   >
                     <Edit2 className="w-3 h-3" />
                   </button>
                   <button
                     onClick={() => handleDeleteCat(c)}
-                    className="p-1 text-zinc-400 hover:text-rose-600 rounded-lg"
+                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -456,17 +456,17 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {/* 4. AI Learned Rules from Corrections */}
-      <div className="p-5 bg-white rounded-3xl border border-zinc-200/80 shadow-card space-y-3.5">
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BrainCircuit className="w-4 h-4 text-brand-700" />
-            <h3 className="text-sm font-bold text-zinc-900">Learned Category Rules</h3>
+            <BrainCircuit className="w-4 h-4 text-brand-700 dark:text-brand-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Learned Category Rules</h3>
           </div>
-          <span className="text-[11px] font-bold text-brand-700 px-2 py-0.5 rounded-full bg-brand-50">
+          <span className="text-[11px] font-bold text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60">
             {categoryRules.length} Active Rules
           </span>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           These rules were learned automatically when you corrected AI category suggestions.
         </p>
 
@@ -477,14 +477,14 @@ export const SettingsView: React.FC = () => {
               return (
                 <div
                   key={rule.id}
-                  className="p-2.5 bg-brand-50/40 rounded-2xl border border-brand-100 flex items-center justify-between text-xs"
+                  className="p-2.5 bg-brand-50/40 dark:bg-brand-950/30 rounded-2xl border border-brand-100 dark:border-brand-900/50 flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-brand-900">"{rule.match_text}"</span>
-                    <span className="text-zinc-400">→</span>
-                    <span className="font-bold text-zinc-800">{cat?.name || 'Category'}</span>
+                    <span className="font-mono font-bold text-brand-900 dark:text-brand-200">"{rule.match_text}"</span>
+                    <span className="text-slate-400">→</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{cat?.name || 'Category'}</span>
                   </div>
-                  <span className="text-[10px] font-semibold text-brand-700 px-2 py-0.5 rounded bg-white border border-brand-200">
+                  <span className="text-[10px] font-semibold text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-brand-200 dark:border-brand-700">
                     {rule.hit_count} hits
                   </span>
                 </div>
@@ -492,71 +492,70 @@ export const SettingsView: React.FC = () => {
             })}
           </div>
         ) : (
-          <p className="text-xs text-zinc-400 italic">No custom rules learned yet.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 italic">No custom rules learned yet.</p>
         )}
       </div>
 
       {/* 4b. AI & Gemini LLM Settings */}
-      <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card space-y-3.5">
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-brand-600" />
-            <h3 className="text-sm font-bold text-slate-900">FinAI & LLM Engine</h3>
+            <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">FinAI & LLM Engine</h3>
           </div>
-          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
             Gemini 2.5 Active
           </span>
         </div>
-        <p className="text-xs text-slate-500 leading-relaxed">
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
           ClearSpend uses Google Gemini 2.5 Flash for natural language expense parsing and the interactive FinAI chatbot coach.
         </p>
 
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-slate-700">Model Engine:</span>
-            <span className="font-mono font-semibold text-brand-700">gemini-2.5-flash / free fallback</span>
+            <span className="font-bold text-slate-700 dark:text-slate-300">Model Engine:</span>
+            <span className="font-mono font-semibold text-brand-700 dark:text-brand-300">gemini-2.5-flash / free fallback</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="font-bold text-slate-700">NLP Accuracy:</span>
-            <span className="text-emerald-700 font-bold">99.4% (Indian Shorthand)</span>
+            <span className="font-bold text-slate-700 dark:text-slate-300">NLP Accuracy:</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-bold">99.4% (Indian Shorthand)</span>
           </div>
         </div>
       </div>
 
       {/* 5. Data Actions & Sign Out */}
-      <div className="p-5 bg-white rounded-3xl border border-zinc-200/80 shadow-card space-y-3">
-
-        <h3 className="text-sm font-bold text-zinc-900">Data Management</h3>
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Data Management</h3>
 
         <div className="space-y-2">
           <button
             onClick={() => exportTransactionsToCSV(transactions, categories, wallets, profile?.base_currency || 'INR')}
-            className="w-full p-3 bg-zinc-50 hover:bg-zinc-100 rounded-2xl border border-zinc-200/80 text-xs font-bold text-zinc-800 flex items-center justify-between transition-colors"
+            className="w-full p-3 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors"
           >
             <span className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-brand-700" />
+              <Download className="w-4 h-4 text-brand-700 dark:text-brand-400" />
               Export All Transactions (CSV)
             </span>
-            <span className="text-zinc-400 font-normal">Download</span>
+            <span className="text-slate-400 dark:text-slate-500 font-normal">Download</span>
           </button>
 
           <button
             onClick={resetToDemoData}
-            className="w-full p-3 bg-zinc-50 hover:bg-zinc-100 rounded-2xl border border-zinc-200/80 text-xs font-bold text-zinc-800 flex items-center justify-between transition-colors"
+            className="w-full p-3 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors"
           >
             <span className="flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-amber-600" />
+              <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               Reset to 40+ Demo Transactions
             </span>
-            <span className="text-zinc-400 font-normal">Reload Demo</span>
+            <span className="text-slate-400 dark:text-slate-500 font-normal">Reload Demo</span>
           </button>
 
           <button
             onClick={logout}
-            className="w-full p-3 bg-rose-50 hover:bg-rose-100 rounded-2xl border border-rose-200/80 text-xs font-bold text-rose-700 flex items-center justify-between transition-colors"
+            className="w-full p-3 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-2xl border border-rose-200/80 dark:border-rose-800 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center justify-between transition-colors"
           >
             <span className="flex items-center gap-2">
-              <LogOut className="w-4 h-4 text-rose-600" />
+              <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
               Sign Out
             </span>
             <span>Exit</span>
@@ -573,20 +572,20 @@ export const SettingsView: React.FC = () => {
       >
         <form onSubmit={handleSaveCategory} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1">Category Name</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category Name</label>
             <input
               type="text"
               required
               value={catName}
               onChange={(e) => setCatName(e.target.value)}
               placeholder="e.g. Subscriptions, Coffee, Fuel"
-              className="w-full text-xs font-semibold px-3.5 py-2.5 bg-zinc-50 border border-zinc-300 rounded-xl focus:border-brand-700 focus:outline-hidden"
+              className="w-full text-xs font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden"
             />
           </div>
 
           {/* Color Palette */}
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1.5">Pick Color</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Pick Color</label>
             <div className="flex gap-2 flex-wrap">
               {PRESET_COLORS.map((c) => (
                 <button
@@ -594,7 +593,7 @@ export const SettingsView: React.FC = () => {
                   type="button"
                   onClick={() => setCatColor(c)}
                   className={`w-7 h-7 rounded-xl transition-transform ${
-                    catColor === c ? 'scale-110 ring-2 ring-zinc-900 ring-offset-2' : ''
+                    catColor === c ? 'scale-110 ring-2 ring-slate-900 dark:ring-white ring-offset-2' : ''
                   }`}
                   style={{ backgroundColor: c }}
                 />
@@ -604,8 +603,8 @@ export const SettingsView: React.FC = () => {
 
           {/* Icon Selector */}
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1.5">Pick Icon</label>
-            <div className="flex gap-2 flex-wrap max-h-32 overflow-y-auto p-1 bg-zinc-50 rounded-2xl border border-zinc-200">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Pick Icon</label>
+            <div className="flex gap-2 flex-wrap max-h-32 overflow-y-auto p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
               {AVAILABLE_ICONS.map((ic) => (
                 <button
                   key={ic}
@@ -614,7 +613,7 @@ export const SettingsView: React.FC = () => {
                   className={`p-2 rounded-xl border transition-all ${
                     catIcon === ic
                       ? 'bg-brand-700 text-white border-brand-700 shadow-xs'
-                      : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100'
+                      : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'
                   }`}
                 >
                   <CategoryIcon name={ic} size={18} />
@@ -627,7 +626,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsCategoryModalOpen(false)}
-              className="px-4 py-2 text-xs font-bold text-zinc-600 hover:text-zinc-900 rounded-xl"
+              className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl"
             >
               Cancel
             </button>
@@ -650,23 +649,23 @@ export const SettingsView: React.FC = () => {
       >
         <form onSubmit={handleSaveWallet} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1">Account / Wallet Name</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Account / Wallet Name</label>
             <input
               type="text"
               required
               value={walletName}
               onChange={(e) => setWalletName(e.target.value)}
               placeholder="e.g. HDFC Bank, GPay, Pocket Cash"
-              className="w-full text-xs font-semibold px-3.5 py-2.5 bg-zinc-50 border border-zinc-300 rounded-xl focus:border-brand-700 focus:outline-hidden"
+              className="w-full text-xs font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1">Account Type</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Account Type</label>
             <select
               value={walletType}
               onChange={(e) => setWalletType(e.target.value as WalletType)}
-              className="w-full text-xs font-semibold px-3 py-2.5 bg-zinc-50 border border-zinc-300 rounded-xl focus:border-brand-700 focus:outline-hidden"
+              className="w-full text-xs font-semibold px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden"
             >
               <option value="bank">Bank Account</option>
               <option value="wallet">UPI / Digital Wallet</option>
@@ -676,13 +675,13 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-700 mb-1">Opening Balance</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Opening Balance</label>
             <input
               type="number"
               step="any"
               value={openingBalance}
               onChange={(e) => setOpeningBalance(e.target.value)}
-              className="w-full text-sm font-bold px-3.5 py-2.5 bg-zinc-50 border border-zinc-300 rounded-xl focus:border-brand-700 focus:outline-hidden tabular-nums"
+              className="w-full text-sm font-bold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden tabular-nums"
             />
           </div>
 
@@ -690,7 +689,7 @@ export const SettingsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsWalletModalOpen(false)}
-              className="px-4 py-2 text-xs font-bold text-zinc-600 hover:text-zinc-900 rounded-xl"
+              className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl"
             >
               Cancel
             </button>
@@ -706,3 +705,4 @@ export const SettingsView: React.FC = () => {
     </div>
   );
 };
+
