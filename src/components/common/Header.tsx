@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, Languages, Settings as SettingsIcon, UserCircle, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, Languages, Settings as SettingsIcon, UserCircle, Info, Sun, Moon } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { useTranslation, LanguageCode } from '../../lib/i18n';
+import { useTheme } from '../../lib/theme';
 import { AboutModal } from './AboutModal';
 
 export const Header: React.FC = () => {
@@ -15,6 +16,7 @@ export const Header: React.FC = () => {
   } = useStore();
 
   const { t, language, setLanguage } = useTranslation();
+  const { isDark, setTheme } = useTheme();
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
   const monthName = selectedDate.toLocaleString(
@@ -31,6 +33,14 @@ export const Header: React.FC = () => {
     setLanguage(nextLang[language]);
   };
 
+  const toggleTheme = () => {
+    if (isDark) {
+      setTheme('light');
+    } else {
+      setTheme('dark');
+    }
+  };
+
   // Extract user initials
   const displayName = profile?.display_name || 'ClearSpend User';
   const firstName = displayName.split(' ')[0];
@@ -44,10 +54,10 @@ export const Header: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 transition-all shadow-[0_1px_3px_0_rgba(15,23,42,0.03)] w-full max-w-full overflow-hidden">
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2">
+        <div className="max-w-4xl mx-auto px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-2">
           
           {/* Left: App Logo & Brand (Click opens About Us modal) */}
-          <div className="flex items-center min-w-0">
+          <div className="flex items-center min-w-0 shrink-0">
             <button
               onClick={() => setIsAboutModalOpen(true)}
               className="cursor-pointer flex items-center gap-1.5 sm:gap-2 group text-left focus:outline-hidden"
@@ -59,7 +69,7 @@ export const Header: React.FC = () => {
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1">
-                  <span className="font-black text-sm sm:text-base leading-none tracking-tight text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                  <span className="font-black text-sm sm:text-base leading-none tracking-tight text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors hidden min-[370px]:inline">
                     {t('app.title', 'ClearSpend')}
                   </span>
                   <Info className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline" />
@@ -68,8 +78,8 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Center: Month Switcher (Exact Middle) */}
-          <div className="flex items-center justify-center min-w-0">
+          {/* Month Switcher (Shifted slightly left for balanced mobile layout) */}
+          <div className="flex items-center justify-center min-w-0 mx-auto">
             <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 rounded-xl p-0.5 shadow-inner-sm shrink-0">
               <button
                 onClick={() => changeMonth(-1)}
@@ -79,7 +89,7 @@ export const Header: React.FC = () => {
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 px-1.5 select-none min-w-[72px] sm:min-w-[84px] text-center capitalize">
+              <span className="text-[10.5px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 px-1 sm:px-1.5 select-none min-w-[65px] sm:min-w-[80px] text-center capitalize">
                 {monthName}
               </span>
               <button
@@ -93,8 +103,22 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Quick Language Switcher + Account Details in Settings Button */}
+          {/* Right: Light/Dark Mode Button + Language Switcher + Account Details in Settings Button */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Light / Dark Mode Toggle Button (In between Month and Language) */}
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-all shadow-xs"
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle Theme"
+            >
+              {isDark ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-indigo-600" />
+              )}
+            </button>
+
             {/* Quick Language Switcher Pill */}
             <button
               onClick={toggleLanguage}
@@ -129,7 +153,7 @@ export const Header: React.FC = () => {
 
               {/* User Name & Settings Cog */}
               <div className="flex items-center gap-1">
-                <span className="text-[11px] sm:text-xs font-bold truncate max-w-[65px] sm:max-w-[90px]">
+                <span className="text-[11px] sm:text-xs font-bold truncate max-w-[55px] sm:max-w-[90px]">
                   {firstName}
                 </span>
                 <SettingsIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 dark:text-slate-400" />

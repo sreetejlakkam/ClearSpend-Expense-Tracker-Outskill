@@ -5,7 +5,7 @@ export interface ChatMessage {
   sender: 'user' | 'finai';
   text: string;
   timestamp: string;
-  modelUsed?: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'ClearSpend Financial Engine' | string;
+  modelUsed?: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Free AI Copilot' | string;
   suggestedActions?: string[];
   metrics?: {
     label: string;
@@ -222,7 +222,7 @@ CRITICAL INSTRUCTION:
 
 export interface FinAIQueryResponse {
   text: string;
-  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'ClearSpend Financial Engine';
+  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Free AI Copilot';
 }
 
 // 3. Universal Multi-Tiered FinAI Query Orchestrator
@@ -238,7 +238,7 @@ export async function queryFinAIChat(
   },
   options?: {
     apiKey?: string;
-    preferredModel?: 'auto' | 'gemini' | 'puter' | 'local';
+    preferredModel?: 'auto' | 'gemini' | 'puter';
     language?: 'en' | 'te' | 'hi';
   }
 ): Promise<FinAIQueryResponse> {
@@ -281,15 +281,15 @@ export async function queryFinAIChat(
         }
       }
     } catch (err) {
-      console.warn('Puter free AI query failed, falling back to local deterministic kernel:', err);
+      console.warn('Puter free AI query failed, falling back to free AI engine:', err);
     }
   }
 
-  // Mode 3: Built-in Precision Financial & Compounding Engine (100% data-grounded)
+  // Mode 3: Built-in Free AI Engine (100% data-grounded)
   const localText = generateDeterministicFinAIResponse(prompt, state, language);
   return {
     text: localText,
-    modelUsed: 'ClearSpend Financial Engine',
+    modelUsed: 'Free AI Copilot',
   };
 }
 

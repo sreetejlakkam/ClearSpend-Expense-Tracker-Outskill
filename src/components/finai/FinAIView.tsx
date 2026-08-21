@@ -47,7 +47,7 @@ export const FinAIView: React.FC = () => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('clearspend_gemini_key') || '');
-  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter' | 'local'>('auto');
+  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter'>('auto');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
 
@@ -185,7 +185,7 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
       localStorage.removeItem('clearspend_gemini_key');
       addToast({
         title: 'Using Built-in Free AI Engine',
-        message: 'FinAI will use the free browser cloud model & precision kernel.',
+        message: 'FinAI will use the free browser cloud AI engine.',
         type: 'info',
       });
     }
@@ -286,7 +286,6 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
             <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Best Free LLM)</option>
             <option value="gemini" className="bg-slate-900 text-white">🤖 Gemini 2.5 Flash</option>
             <option value="puter" className="bg-slate-900 text-white">✨ Free Cloud AI (Puter)</option>
-            <option value="local" className="bg-slate-900 text-white">🛡️ Precision Kernel</option>
           </select>
 
           <button
