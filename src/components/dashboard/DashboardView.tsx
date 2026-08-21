@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Bot,
   ChevronRight,
   CreditCard,
   PiggyBank,
@@ -17,6 +18,7 @@ import {
   Banknote,
   Coins
 } from 'lucide-react';
+
 import {
   Area,
   AreaChart,
@@ -305,8 +307,36 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
+      {/* 2b. FinAI Financial Copilot Interactive Launcher */}
+      <div
+        onClick={() => setActiveTab('finai')}
+        className="cursor-pointer p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 hover:from-slate-800 hover:via-indigo-900 hover:to-slate-800 text-white rounded-3xl shadow-lg border border-indigo-500/30 flex items-center justify-between gap-3 group transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform">
+            <Bot className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-white">Ask FinAI Copilot</span>
+              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                Gemini 2.5
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-0.5">
+              "How can I cut ₹5,000 off my food spend this month?"
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-xs font-bold text-indigo-200 group-hover:text-white bg-white/10 group-hover:bg-white/20 px-3 py-1.5 rounded-xl transition-all shrink-0">
+          <span>Chat</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
       {/* 3. Account / Wallets Carousel (Money Manager & Wallet by BudgetBakers Style) */}
       <div className="space-y-2">
+
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
             <WalletIcon className="w-4 h-4 text-brand-600" />

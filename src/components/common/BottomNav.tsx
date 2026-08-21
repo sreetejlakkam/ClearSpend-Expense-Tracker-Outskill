@@ -1,6 +1,7 @@
 import React from 'react';
-import { LayoutGrid, PiggyBank, ReceiptText, Settings, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bot, LayoutGrid, PiggyBank, ReceiptText, Settings, ShieldCheck } from 'lucide-react';
 import { useStore } from '../../lib/store';
+
 
 export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, pendingReviewCount } = useStore();
@@ -9,7 +10,7 @@ export const BottomNav: React.FC = () => {
     { id: 'dashboard', label: 'Overview', icon: LayoutGrid },
     { id: 'transactions', label: 'Ledger', icon: ReceiptText },
     { id: 'budgets', label: 'Budgets', icon: PiggyBank },
-    { id: 'insights', label: 'Insights', icon: Sparkles },
+    { id: 'finai', label: 'FinAI', icon: Bot, isAi: true },
     {
       id: 'review',
       label: 'Review',
@@ -18,6 +19,7 @@ export const BottomNav: React.FC = () => {
     },
     { id: 'settings', label: 'Accounts', icon: Settings },
   ];
+
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-4px_24px_-4px_rgba(15,23,42,0.08)]">

@@ -11,6 +11,7 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { TransactionsView } from './components/transactions/TransactionsView';
 import { BudgetsView } from './components/budgets/BudgetsView';
 import { InsightsView } from './components/insights/InsightsView';
+import { FinAIView } from './components/finai/FinAIView';
 import { ReviewInboxView } from './components/review/ReviewInboxView';
 import { SettingsView } from './components/settings/SettingsView';
 
@@ -48,6 +49,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'dashboard' && <DashboardView />}
         {activeTab === 'transactions' && <TransactionsView />}
         {activeTab === 'budgets' && <BudgetsView />}
+        {activeTab === 'finai' && <FinAIView />}
         {activeTab === 'insights' && <InsightsView />}
         {activeTab === 'review' && <ReviewInboxView />}
         {activeTab === 'settings' && <SettingsView />}
@@ -55,6 +57,7 @@ export const AppContent: React.FC = () => {
 
       {/* Sticky Signature Quick-Add Bar */}
       <QuickAddBar />
+
 
       {/* Sticky Bottom Navigation Bar */}
       <BottomNav />
