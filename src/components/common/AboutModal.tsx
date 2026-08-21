@@ -6,10 +6,9 @@ import {
   TrendingUp,
   Zap,
   CheckCircle2,
-  Github,
-  ExternalLink,
   X,
 } from 'lucide-react';
+
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -154,20 +153,13 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
 
         {/* Footer Actions */}
         <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-          <a
-            href="https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-brand-600 transition-colors"
-          >
-            <Github className="w-4 h-4" />
-            <span>GitHub Repository</span>
-            <ExternalLink className="w-3 h-3 text-slate-400" />
-          </a>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <span>ClearSpend Autonomous Financial System</span>
+          </div>
 
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            className="px-5 py-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
           >
             Done
           </button>
@@ -176,3 +168,4 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+

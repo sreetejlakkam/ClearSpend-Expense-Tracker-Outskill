@@ -11,15 +11,16 @@ export const BottomNav: React.FC = () => {
     { id: 'dashboard', label: t('nav.overview', 'Overview'), icon: LayoutGrid },
     { id: 'transactions', label: t('nav.ledger', 'Ledger'), icon: ReceiptText },
     { id: 'budgets', label: t('nav.budgets', 'Budgets'), icon: PiggyBank },
-    { id: 'compounding', label: t('nav.compounding', 'Growth'), icon: TrendingUp },
-    { id: 'finai', label: t('nav.finai', 'FinAI'), icon: Bot, isAi: true },
     {
       id: 'review',
       label: t('nav.review', 'Review'),
       icon: ShieldCheck,
       badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
     },
+    { id: 'finai', label: t('nav.finai', 'FinAI'), icon: Bot, isAi: true },
+    { id: 'compounding', label: t('nav.compounding', 'Growth'), icon: TrendingUp },
   ];
+
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-surface-dark/95 backdrop-blur-2xl border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_24px_-4px_rgba(15,23,42,0.08)] w-full max-w-full overflow-hidden">
