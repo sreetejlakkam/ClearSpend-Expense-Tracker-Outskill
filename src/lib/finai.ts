@@ -5,6 +5,7 @@ export interface ChatMessage {
   sender: 'user' | 'finai';
   text: string;
   timestamp: string;
+  modelUsed?: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'ClearSpend Financial Engine' | string;
   suggestedActions?: string[];
   metrics?: {
     label: string;
@@ -13,7 +14,7 @@ export interface ChatMessage {
   }[];
 }
 
-// Generate rich, structured financial prompt context for Gemini
+// Generate rich, structured financial prompt context for LLMs
 export function buildFinancialContext(
   profile: Profile | null,
   wallets: Wallet[],
@@ -97,7 +98,7 @@ ${allTxnsStr || 'None'}
 `.trim();
 }
 
-// Call Google Gemini API (gemini-2.5-flash or gemini-1.5-flash) with full context
+// 1. Call Google Gemini API (gemini-2.5-flash or gemini-1.5-flash) with full context
 export async function queryGeminiAI(
   prompt: string,
   financialContext: string,
@@ -115,7 +116,6 @@ export async function queryGeminiAI(
   const key = apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('clearspend_gemini_key') || '';
 
   if (!key) {
-    // Fall back to intelligent local financial inference
     return generateDeterministicFinAIResponse(prompt, state, language);
   }
 
@@ -134,7 +134,6 @@ CRITICAL INSTRUCTION:
 - If asked about compounding, SIP, or opportunity cost (e.g. investing ₹2,000 monthly over 5, 10, 20 years at 12% CAGR), perform exact compounding math (FV = P * [((1+i)^n - 1)/i] * (1+i)).
 - Format responses cleanly with bold numbers, bullet points, and actionable advice.
 - Keep tone professional, encouraging, and practical.`;
-
 
   const requestBody = {
     contents: [
@@ -173,20 +172,128 @@ CRITICAL INSTRUCTION:
       );
       if (fallbackResp.ok) {
         const data = await fallbackResp.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || generateDeterministicFinAIResponse(prompt, state);
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || generateDeterministicFinAIResponse(prompt, state, language);
       }
       throw new Error(`Gemini API returned ${response.status}`);
     }
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || generateDeterministicFinAIResponse(prompt, state);
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || generateDeterministicFinAIResponse(prompt, state, language);
   } catch (error) {
-    console.warn('Gemini API query failed, using deterministic FinAI engine:', error);
-    return generateDeterministicFinAIResponse(prompt, state);
+    console.warn('Gemini API query failed, falling back to deterministic engine:', error);
+    return generateDeterministicFinAIResponse(prompt, state, language);
   }
 }
 
-// Deep Deterministic Financial Query & Math Engine (Answers ANY specific question accurately)
+// 2. Call Free Browser Cloud LLM via Puter.js (GPT-4o-mini / Claude / Mistral - 100% Free & Zero Key Required)
+export async function queryPuterAI(
+  prompt: string,
+  financialContext: string,
+  language: 'en' | 'te' | 'hi' = 'en'
+): Promise<string> {
+  if (typeof window === 'undefined' || !(window as any).puter?.ai?.chat) {
+    throw new Error('Free Browser Cloud AI is not initialized yet');
+  }
+
+  const langInstruction = language === 'te'
+    ? 'IMPORTANT: Respond fluently in Telugu (తెలుగు లిపి) with bold numbers and bullet points.'
+    : language === 'hi'
+    ? 'IMPORTANT: Respond fluently in Hindi (हिन्दी देवनागरी लिपि) with bold numbers and bullet points.'
+    : 'Respond in English with bold numbers and bullet points.';
+
+  const systemInstruction = `You are FinAI, an expert, encouraging, and data-driven personal financial copilot in the ClearSpend app.
+${langInstruction}
+CRITICAL INSTRUCTION:
+- You have access to the user's REAL financial ledger transactions provided below.
+- ALWAYS answer the user's SPECIFIC question with exact figures, dates, and names from the ledger.
+- If asked about a specific merchant (e.g. Zomato, Swiggy, Uber), find and list all occurrences, sum them up, and calculate their % of spend.
+- If asked about compounding, SIP, or opportunity cost (e.g. investing ₹2,000 monthly over 5, 10, 20 years at 12% CAGR), perform exact compounding math.
+- Format responses cleanly with bold numbers, bullet points, and actionable advice.`;
+
+  const fullPrompt = `${systemInstruction}\n\n=== USER LIVE FINANCIAL LEDGER DATA ===\n${financialContext}\n\n=== USER SPECIFIC QUERY ===\n${prompt}`;
+
+  const res = await (window as any).puter.ai.chat(fullPrompt, { model: 'gpt-4o-mini' });
+
+  if (typeof res === 'string') return res;
+  if (res?.message?.content) return res.message.content;
+  if (res?.text) return res.text;
+  return String(res);
+}
+
+export interface FinAIQueryResponse {
+  text: string;
+  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'ClearSpend Financial Engine';
+}
+
+// 3. Universal Multi-Tiered FinAI Query Orchestrator
+export async function queryFinAIChat(
+  prompt: string,
+  state: {
+    profile: Profile | null;
+    wallets: Wallet[];
+    categories: Category[];
+    transactions: Transaction[];
+    budgets: Budget[];
+    selectedMonthStr: string;
+  },
+  options?: {
+    apiKey?: string;
+    preferredModel?: 'auto' | 'gemini' | 'puter' | 'local';
+    language?: 'en' | 'te' | 'hi';
+  }
+): Promise<FinAIQueryResponse> {
+  const language = options?.language || 'en';
+  const apiKey = options?.apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('clearspend_gemini_key') || '';
+  const preferredModel = options?.preferredModel || 'auto';
+
+  const financialContext = buildFinancialContext(
+    state.profile,
+    state.wallets,
+    state.categories,
+    state.transactions,
+    state.budgets,
+    state.selectedMonthStr
+  );
+
+  // Mode 1: Gemini API (if key is set or model explicitly chosen)
+  if ((preferredModel === 'gemini' || (preferredModel === 'auto' && apiKey)) && apiKey) {
+    try {
+      const geminiText = await queryGeminiAI(prompt, financialContext, apiKey, state, language);
+      return {
+        text: geminiText,
+        modelUsed: 'Google Gemini 2.5 Flash',
+      };
+    } catch (err) {
+      console.warn('Gemini query failed, attempting Puter free cloud AI:', err);
+    }
+  }
+
+  // Mode 2: Puter Free Cloud AI (Zero-config free LLM running in browser)
+  if (preferredModel === 'puter' || preferredModel === 'auto') {
+    try {
+      if (typeof window !== 'undefined' && (window as any).puter?.ai?.chat) {
+        const puterText = await queryPuterAI(prompt, financialContext, language);
+        if (puterText && puterText.trim().length > 10) {
+          return {
+            text: puterText,
+            modelUsed: 'Puter Free Cloud AI',
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Puter free AI query failed, falling back to local deterministic kernel:', err);
+    }
+  }
+
+  // Mode 3: Built-in Precision Financial & Compounding Engine (100% data-grounded)
+  const localText = generateDeterministicFinAIResponse(prompt, state, language);
+  return {
+    text: localText,
+    modelUsed: 'ClearSpend Financial Engine',
+  };
+}
+
+// 4. Deep Deterministic Financial Query & Math Engine (Answers ANY specific question accurately)
 export function generateDeterministicFinAIResponse(
   prompt: string,
   state?: {
@@ -232,7 +339,6 @@ export function generateDeterministicFinAIResponse(
     p.includes('power of') ||
     p.includes('future value')
   ) {
-    // Extract monthly amount if specified, else default to 2000
     const amtMatch = p.match(/(?:invest|sip|save|spend|costing|of|₹|rs\.?)\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?k?)/i);
     let monthlySip = 2000;
     if (amtMatch) {
@@ -261,9 +367,7 @@ export function generateDeterministicFinAIResponse(
     return `### 📈 The Power of Compounding Visualizer\n\nIf you redirect **${currSym}${monthlySip.toLocaleString()}/month** of avoidable spending into a standard 12% CAGR equity index fund / SIP:\n\n- **In 10 Years:** **${fmt(calc10)}** (Capital Invested: ${currSym}${(monthlySip * 120).toLocaleString()})\n- **In 20 Years:** **${fmt(calc20)}** (Capital Invested: ${currSym}${(monthlySip * 240).toLocaleString()}) — **4.2× Multiplier!**\n- **In 30 Years:** **${fmt(calc30)}** (Capital Invested: ${currSym}${(monthlySip * 360).toLocaleString()}) — **9.8× Multiplier!**\n\n💡 **Key Takeaway:** An avoidable expense of ${currSym}${monthlySip.toLocaleString()} is not just ₹${monthlySip} lost today — it is **${fmt(calc20)}** of lost future wealth over 20 years!`;
   }
 
-
-  // 1. SPECIFIC MERCHANT QUERY (e.g. "how much did I spend on Zomato / Swiggy / Zepto / Rent / Uber / etc.")
-  // Look for any merchant name in user's prompt
+  // 1. SPECIFIC MERCHANT QUERY (e.g. Zomato, Swiggy, Zepto, Rent, Uber, etc.)
   const matchedTxnsByMerchant = monthTxns.filter((t) => {
     const merch = t.merchant.toLowerCase();
     const note = (t.note || '').toLowerCase();
@@ -308,7 +412,7 @@ export function generateDeterministicFinAIResponse(
     }`;
   }
 
-  // 2. SPECIFIC CATEGORY QUERY (e.g. "how much on food / groceries / transport / rent / health")
+  // 2. SPECIFIC CATEGORY QUERY
   const matchedCategory = categories.find((c) => {
     const cName = c.name.toLowerCase();
     return p.includes(cName) || (cName === 'food & dining' && (p.includes('food') || p.includes('dining') || p.includes('eating')));
@@ -339,7 +443,7 @@ export function generateDeterministicFinAIResponse(
     }`;
   }
 
-  // 3. HIGHEST / BIGGEST / LARGEST EXPENSE QUERY
+  // 3. HIGHEST / BIGGEST EXPENSE QUERY
   if (p.includes('biggest') || p.includes('highest') || p.includes('largest') || p.includes('most expensive') || p.includes('top expense')) {
     const sortedExpenses = [...monthTxns.filter((t) => t.kind === 'expense')].sort((a, b) => b.amount - a.amount);
     if (sortedExpenses.length === 0) {
@@ -356,7 +460,7 @@ export function generateDeterministicFinAIResponse(
     return `### 🏆 Top Largest Expenses in ${selectedMonthStr}\n\nYour single highest expense was **${top1.merchant}** at **${currSym}${top1.amount.toLocaleString()}** on **${top1.txn_date}** (${top1Cat?.name || 'General'}).\n\n**Top 5 Outflows:**\n${top5}\n\n💡 **Insight:** Your top 5 expenses account for **${currSym}${sortedExpenses.slice(0, 5).reduce((s, t) => s + t.amount, 0).toLocaleString()}** (${Math.round((sortedExpenses.slice(0, 5).reduce((s, t) => s + t.amount, 0) / (totalSpent || 1)) * 100)}% of total monthly spend).`;
   }
 
-  // 4. ACCOUNT / WALLET BALANCE QUERY (e.g. "how much in HDFC / bank / cash / credit card")
+  // 4. WALLET / ACCOUNT BALANCE QUERY
   const matchedWallet = wallets.find((w) => {
     const wName = w.name.toLowerCase();
     const wType = w.type.toLowerCase();
@@ -376,7 +480,7 @@ export function generateDeterministicFinAIResponse(
     }`;
   }
 
-  // 5. AFFORDABILITY & PURCHASE SIMULATION (e.g. "can I afford 15k / buy a ₹10,000 watch?")
+  // 5. AFFORDABILITY & PURCHASE SIMULATION
   const amountMatch = p.match(/(?:can i afford|can i buy|should i buy|buy for|afford|costing|of|price)\s*(?:₹|rs\.?|inr)?\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?k?)/i) ||
                      p.match(/(?:₹|rs\.?)\s*([0-9]+(?:,[0-9]+)*(?:\.[0-9]+)?k?)/i);
 
@@ -406,7 +510,7 @@ export function generateDeterministicFinAIResponse(
 
   // 6. DAILY BURN RATE & RUNWAY
   if (p.includes('burn rate') || p.includes('daily spend') || p.includes('per day') || p.includes('runway') || p.includes('pace')) {
-    const daysElapsed = 20; // mid month
+    const daysElapsed = 20;
     const dailyAvg = Math.round(totalSpent / daysElapsed);
     const projectedMonthEnd = dailyAvg * 31;
     const remainingDays = 11;
@@ -424,7 +528,7 @@ export function generateDeterministicFinAIResponse(
     return `### 💰 Income Summary for ${selectedMonthStr}\n\n- **Total Income:** **${currSym}${totalEarned.toLocaleString()}** (${incomeTxns.length} records)\n- **Net Saved:** **${currSym}${netBalance.toLocaleString()}** (${savingsRate}% saved)\n\n**Income Inflows:**\n${items || '  • No income recorded for this month.'}`;
   }
 
-  // 8. WHERE DID I SPEND THE MOST (Category breakdown ranked)
+  // 8. WHERE DID I SPEND THE MOST
   if (p.includes('where') || p.includes('spending breakdown') || p.includes('distribution')) {
     const catMap = new Map<string, number>();
     for (const t of monthTxns) {
@@ -455,7 +559,7 @@ export function generateDeterministicFinAIResponse(
     return `### 🛡️ Automated Ledger Protection Report\n\nClearSpend's continuous guard has analyzed your ${monthTxns.length} active transactions:\n\n- **Duplicate Guard:** Levenshtein and token distance scan for accidental double charges.\n- **Anomaly Spike Filter:** Flags purchases exceeding **3× your category median**.\n\nTap the **Review** tab in the bottom bar to accept or merge flagged items in 1 click!`;
   }
 
-  // DEFAULT CONTEXTUAL SUMMARY (always uses actual calculated numbers)
+  // DEFAULT CONTEXTUAL SUMMARY
   return `### 🤖 FinAI Financial Overview for ${selectedMonthStr}\n\n- **Income:** **${currSym}${totalEarned.toLocaleString()}**\n- **Expenses:** **${currSym}${totalSpent.toLocaleString()}**\n- **Net Savings:** **${currSym}${netBalance.toLocaleString()}** (**${savingsRate}%** savings rate)\n- **Active Accounts:** ${wallets.length} accounts (${currSym}${wallets.reduce((s, w) => {
     const wTxns = activeTxns.filter((t) => t.wallet_id === w.id);
     const e = wTxns.filter((t) => t.kind === 'income').reduce((sum, t) => sum + t.amount, 0);

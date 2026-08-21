@@ -9,15 +9,16 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   PiggyBank,
-  Loader2
+  Loader2,
+  Cpu,
+  ExternalLink
 } from 'lucide-react';
 
 import { useStore } from '../../lib/store';
 import { useTranslation } from '../../lib/i18n';
 import {
   ChatMessage,
-  buildFinancialContext,
-  queryGeminiAI
+  queryFinAIChat
 } from '../../lib/finai';
 
 const INITIAL_PROMPTS = [
@@ -34,7 +35,6 @@ const INITIAL_PROMPTS = [
 export const FinAIView: React.FC = () => {
   const { language } = useTranslation();
   const {
-
     profile,
     wallets,
     categories,
@@ -47,6 +47,7 @@ export const FinAIView: React.FC = () => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('clearspend_gemini_key') || '');
+  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter' | 'local'>('auto');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
 
@@ -66,33 +67,33 @@ export const FinAIView: React.FC = () => {
   const savingsRate = totalEarned > 0 ? Math.max(0, Math.round(((totalEarned - totalSpent) / totalEarned) * 100)) : 0;
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    let welcomeText = `👋 Hi **${profile?.display_name || 'there'}**! I'm **FinAI**, your AI Financial Copilot.
-
-I have analyzed your **${selectedMonthStr}** ledger:
+    let welcomeText = `👋 Hi **${profile?.display_name || 'there'}**! I'm **FinAI**, your Free AI Financial Copilot.
+    
+I am directly connected to your **${selectedMonthStr}** ledger and free LLM reasoning engine:
 - **Income:** **${currSym}${totalEarned.toLocaleString()}**
 - **Expenses:** **${currSym}${totalSpent.toLocaleString()}**
-- **Savings Rate:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} saved)
+- **Savings Rate:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} retained)
 
-Ask me anything about your spending patterns, compounding investments, or tap a suggestion below!`;
+Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queries, or compounding investment potential!`;
 
     if (language === 'te') {
-      welcomeText = `👋 నమస్తే **${profile?.display_name || 'గారు'}**! నేను **ఫిన్‌ఏఐ**, మీ వ్యక్తిగత ఆర్థిక కోపైలట్.
+      welcomeText = `👋 నమస్తే **${profile?.display_name || 'గారు'}**! నేను **ఫిన్‌ఏఐ**, మీ ఉచిత ఏఐ ఆర్థిక కోపైలట్.
 
 మీ **${selectedMonthStr}** లావాదేవీల సారాంశం:
 - **ఆదాయం:** **${currSym}${totalEarned.toLocaleString()}**
 - **ఖర్చులు:** **${currSym}${totalSpent.toLocaleString()}**
 - **పొదుపు రేటు:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} నికర పొదుపు)
 
-మీ ఖర్చుల వివరాలు లేదా చక్రవడ్డీ పెట్టుబడి లెక్కల గురించి నన్ను అడగండి!`;
+మీ ఖర్చుల వివరాలు, నిర్దిష్ట వ్యాపారుల ఖర్చులు లేదా చక్రవడ్డీ పెట్టుబడి లెక్కల గురించి నన్ను అడగండి!`;
     } else if (language === 'hi') {
-      welcomeText = `👋 नमस्ते **${profile?.display_name || 'जी'}**! मैं **फिनएआई** हूँ, आपका एआई वित्तीय कोपायलट।
+      welcomeText = `👋 नमस्ते **${profile?.display_name || 'जी'}**! मैं **फिनएआई** हूँ, आपका निःशुल्क एआई वित्तीय कोपायलट।
 
 आपके **${selectedMonthStr}** का ब्योरा:
 - **आय:** **${currSym}${totalEarned.toLocaleString()}**
 - **खर्च:** **${currSym}${totalSpent.toLocaleString()}**
 - **बचत दर:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} शुद्ध बचत)
 
-अपने खर्चों, बजट या कंपाउंडिंग निवेश के बारे में कुछ भी पूछें!`;
+अपने खर्चों, बजट या चक्रवृद्धि निवेश के बारे में कुछ भी पूछें!`;
     }
 
     return [
@@ -101,6 +102,7 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
         sender: 'finai',
         text: welcomeText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: 'Free Cloud AI (Puter / Gemini)',
       },
     ];
   });
@@ -131,19 +133,8 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
     setIsLoading(true);
 
     try {
-      const financialContext = buildFinancialContext(
-        profile,
-        wallets,
-        categories,
-        transactions,
-        budgets,
-        selectedMonthStr
-      );
-
-      const aiReply = await queryGeminiAI(
+      const response = await queryFinAIChat(
         text,
-        financialContext,
-        apiKey,
         {
           profile,
           wallets,
@@ -152,14 +143,19 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
           budgets,
           selectedMonthStr,
         },
-        language
+        {
+          apiKey,
+          preferredModel,
+          language,
+        }
       );
 
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'finai',
-        text: aiReply,
+        text: response.text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: response.modelUsed,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -174,7 +170,6 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
     }
   };
 
-
   const handleSaveApiKey = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanKey = tempApiKey.trim();
@@ -183,14 +178,14 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
       localStorage.setItem('clearspend_gemini_key', cleanKey);
       addToast({
         title: 'Gemini API Key Saved',
-        message: 'FinAI is now connected to live Gemini models!',
+        message: 'FinAI is now connected to live Google Gemini models!',
         type: 'success',
       });
     } else {
       localStorage.removeItem('clearspend_gemini_key');
       addToast({
-        title: 'Using Built-in AI Engine',
-        message: 'FinAI will use the local zero-config financial model.',
+        title: 'Using Built-in Free AI Engine',
+        message: 'FinAI will use the free browser cloud model & precision kernel.',
         type: 'info',
       });
     }
@@ -202,8 +197,9 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
       {
         id: 'reset',
         sender: 'finai',
-        text: `Chat history cleared. How can I help you manage your finances today?`,
+        text: `Chat history cleared. How can I help you optimize your spending and wealth today?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: 'Free AI Engine',
       },
     ]);
   };
@@ -216,15 +212,15 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
         {lines.map((line, idx) => {
           if (line.startsWith('### ')) {
             return (
-              <h4 key={idx} className="font-extrabold text-slate-900 text-sm sm:text-base mt-2 mb-1 flex items-center gap-1.5">
+              <h4 key={idx} className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base mt-2 mb-1 flex items-center gap-1.5">
                 {line.replace('### ', '')}
               </h4>
             );
           }
           if (line.startsWith('- ') || line.startsWith('* ')) {
             return (
-              <div key={idx} className="flex items-start gap-1.5 pl-1">
-                <span className="text-brand-600 font-bold">•</span>
+              <div key={idx} className="flex items-start gap-1.5 pl-1 text-slate-800 dark:text-slate-200">
+                <span className="text-brand-600 dark:text-brand-400 font-bold">•</span>
                 <span dangerouslySetInnerHTML={{ __html: formatInline(line.substring(2)) }} />
               </div>
             );
@@ -233,8 +229,8 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
             const num = line.match(/^(\d+)\.\s/)?.[1] || '1';
             const rest = line.replace(/^\d+\.\s/, '');
             return (
-              <div key={idx} className="flex items-start gap-1.5 pl-1">
-                <span className="text-brand-700 font-extrabold">{num}.</span>
+              <div key={idx} className="flex items-start gap-1.5 pl-1 text-slate-800 dark:text-slate-200">
+                <span className="text-brand-700 dark:text-brand-400 font-extrabold">{num}.</span>
                 <span dangerouslySetInnerHTML={{ __html: formatInline(rest) }} />
               </div>
             );
@@ -243,7 +239,7 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
             return <div key={idx} className="h-1" />;
           }
           return (
-            <p key={idx} dangerouslySetInnerHTML={{ __html: formatInline(line) }} />
+            <p key={idx} className="text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: formatInline(line) }} />
           );
         })}
       </div>
@@ -252,40 +248,55 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
 
   const formatInline = (str: string) => {
     return str
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-slate-900">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>');
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-slate-900 dark:text-white">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em class="italic text-slate-700 dark:text-slate-300">$1</em>');
   };
 
   return (
-    <div className="space-y-4 pb-28">
+    <div className="w-full max-w-full overflow-hidden space-y-4 pb-28">
       {/* Top Banner: FinAI Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 rounded-3xl text-white shadow-xl border border-slate-800">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-5 rounded-3xl text-white shadow-xl border border-indigo-500/30 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-brand-500/20 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
             <Sparkles className="w-6 h-6 text-indigo-100" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black tracking-tight text-white">FinAI Copilot</h2>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">FinAI Copilot</h2>
               <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Gemini 2.5 Active
+                Free AI Model Active
               </span>
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Personal financial intelligence grounded in your real spending data
+            <p className="text-xs text-slate-300 mt-0.5 truncate">
+              Personal financial copilot grounded in your real live spending data
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        {/* Model Selector & Actions */}
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
+          <select
+            value={preferredModel}
+            onChange={(e) => setPreferredModel(e.target.value as any)}
+            className="text-[11px] font-bold px-2.5 py-1.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-slate-100 focus:outline-hidden cursor-pointer"
+          >
+            <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Best Free LLM)</option>
+            <option value="gemini" className="bg-slate-900 text-white">🤖 Gemini 2.5 Flash</option>
+            <option value="puter" className="bg-slate-900 text-white">✨ Free Cloud AI (Puter)</option>
+            <option value="local" className="bg-slate-900 text-white">🛡️ Precision Kernel</option>
+          </select>
+
           <button
             onClick={() => setShowKeyModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors border border-white/10"
             title="Configure Gemini API Key"
           >
             <Key className="w-3.5 h-3.5 text-indigo-300" />
-            <span>{apiKey ? 'API Key Set' : 'Custom API Key'}</span>
+            <span className="hidden sm:inline">{apiKey ? 'Gemini Key Active' : 'Custom API Key'}</span>
+            <span className="sm:hidden">{apiKey ? 'Key' : 'Key'}</span>
           </button>
 
           <button
@@ -299,38 +310,38 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
       </div>
 
       {/* Real-Time Financial Snapshot Strip */}
-      <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="grid grid-cols-3 gap-2 bg-white dark:bg-surface-dark p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center shrink-0">
             <ArrowUpRight className="w-3.5 h-3.5 text-rose-500" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] text-slate-400 font-bold block">Spent</span>
-            <span className="text-xs font-black text-slate-900 tabular-nums truncate block">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block">Spent</span>
+            <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums truncate block">
               {currSym}{totalSpent.toLocaleString()}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center shrink-0">
             <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] text-slate-400 font-bold block">Income</span>
-            <span className="text-xs font-black text-emerald-700 tabular-nums truncate block">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block">Income</span>
+            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 tabular-nums truncate block">
               {currSym}{totalEarned.toLocaleString()}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-            <PiggyBank className="w-3.5 h-3.5 text-brand-600" />
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center shrink-0">
+            <PiggyBank className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] text-slate-400 font-bold block">Saved</span>
-            <span className="text-xs font-black text-indigo-700 tabular-nums truncate block">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold block">Saved</span>
+            <span className="text-xs font-black text-indigo-700 dark:text-indigo-400 tabular-nums truncate block">
               {savingsRate}%
             </span>
           </div>
@@ -338,7 +349,7 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
       </div>
 
       {/* Chat Messages Container */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-card p-4 min-h-[380px] max-h-[520px] flex flex-col justify-between overflow-hidden">
+      <div className="bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card p-4 min-h-[380px] max-h-[520px] flex flex-col justify-between overflow-hidden">
         {/* Messages Stream */}
         <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 pb-2">
           {messages.map((msg) => (
@@ -355,10 +366,10 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
               )}
 
               <div
-                className={`max-w-[85%] sm:max-w-[78%] rounded-2xl p-3.5 text-xs sm:text-sm ${
+                className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-3.5 text-xs sm:text-sm ${
                   msg.sender === 'user'
                     ? 'bg-gradient-to-r from-brand-700 to-indigo-600 text-white shadow-md shadow-brand-700/20 rounded-tr-xs'
-                    : 'bg-slate-50 border border-slate-200/90 text-slate-800 shadow-xs rounded-tl-xs'
+                    : 'bg-slate-50 dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 text-slate-800 dark:text-slate-200 shadow-xs rounded-tl-xs'
                 }`}
               >
                 {msg.sender === 'user' ? (
@@ -366,17 +377,26 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
                 ) : (
                   renderFormattedText(msg.text)
                 )}
-                <span
-                  className={`text-[9px] font-bold block mt-1.5 text-right ${
-                    msg.sender === 'user' ? 'text-indigo-200' : 'text-slate-400'
-                  }`}
-                >
-                  {msg.timestamp}
-                </span>
+
+                <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-slate-200/50 dark:border-slate-700/50 text-[9px]">
+                  {msg.sender === 'finai' && msg.modelUsed && (
+                    <span className="font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                      <Cpu className="w-2.5 h-2.5" />
+                      {msg.modelUsed}
+                    </span>
+                  )}
+                  <span
+                    className={`font-bold ml-auto ${
+                      msg.sender === 'user' ? 'text-indigo-200' : 'text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    {msg.timestamp}
+                  </span>
+                </div>
               </div>
 
               {msg.sender === 'user' && (
-                <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center shrink-0 mt-0.5">
                   <User className="w-4 h-4" />
                 </div>
               )}
@@ -389,9 +409,9 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-700 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
                 <Bot className="w-4 h-4" />
               </div>
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl rounded-tl-xs flex items-center gap-2 text-xs font-bold text-slate-600">
+              <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl rounded-tl-xs flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
-                <span>FinAI is crunching your numbers…</span>
+                <span>FinAI is reasoning with your ledger data…</span>
               </div>
             </div>
           )}
@@ -400,14 +420,14 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
         </div>
 
         {/* Prompt Suggestions */}
-        <div className="pt-2 border-t border-slate-100 space-y-2">
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
           <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none snap-x">
             {INITIAL_PROMPTS.map((p, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSendMessage(p.label)}
                 disabled={isLoading}
-                className="shrink-0 snap-start px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                className="shrink-0 snap-start px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs hover:scale-[1.02] active:scale-95 disabled:opacity-50"
               >
                 <span>{p.icon}</span>
                 <span>{p.label}</span>
@@ -421,15 +441,15 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
               e.preventDefault();
               handleSendMessage();
             }}
-            className="relative flex items-center bg-slate-50 border border-slate-300 focus-within:border-brand-600 rounded-2xl p-1 transition-all"
+            className="relative flex items-center bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus-within:border-brand-600 rounded-2xl p-1 transition-all"
           >
             <input
               type="text"
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder="Ask FinAI: 'How can I save ₹5000 more?' or 'Audit my food spend'…"
+              placeholder="Ask FinAI: 'How much on Swiggy?', 'Can I buy a ₹15k phone?'…"
               disabled={isLoading}
-              className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-hidden"
+              className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden"
             />
 
             <button
@@ -448,40 +468,40 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
         </div>
       </div>
 
-      {/* Optional Gemini API Key Modal */}
+      {/* Free Gemini API Key Modal */}
       {showKeyModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300 flex items-center justify-center">
                   <Key className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-extrabold text-slate-900">Google Gemini API Key</h3>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Google Gemini & Free AI</h3>
               </div>
               <button
                 onClick={() => setShowKeyModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <div className="text-xs text-slate-600 leading-relaxed space-y-2">
+            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed space-y-2">
               <p>
-                FinAI includes a <strong>free, zero-config local intelligence model</strong> out of the box.
+                FinAI includes a <strong>free, zero-config cloud AI model</strong> running right in your browser.
               </p>
               <p>
-                To enable live cloud reasoning with <strong>Gemini 2.5 Flash</strong>, you can paste your free API key from{' '}
+                To enable direct high-speed cloud reasoning with <strong>Gemini 2.5 Flash</strong>, you can paste your free API key from{' '}
                 <a
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-brand-700 font-bold underline"
+                  className="text-brand-700 dark:text-brand-400 font-bold underline inline-flex items-center gap-0.5"
                 >
-                  Google AI Studio
-                </a>
-                .
+                  Google AI Studio <ExternalLink className="w-3 h-3" />
+                </a>{' '}
+                (100% free, 15 RPM).
               </p>
             </div>
 
@@ -491,14 +511,14 @@ Ask me anything about your spending patterns, compounding investments, or tap a 
                 value={tempApiKey}
                 onChange={(e) => setTempApiKey(e.target.value)}
                 placeholder="AIzaSy..."
-                className="w-full text-xs font-mono font-semibold px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:border-brand-600 focus:outline-hidden"
+                className="w-full text-xs font-mono font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-600 focus:outline-hidden"
               />
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowKeyModal(false)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   Cancel
                 </button>
