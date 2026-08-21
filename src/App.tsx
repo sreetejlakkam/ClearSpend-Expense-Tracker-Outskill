@@ -41,12 +41,13 @@ export const AppContent: React.FC = () => {
 
   // Main App Interface
   return (
-    <div className="min-h-screen bg-background dark:bg-background-dark text-foreground dark:text-foreground-dark flex flex-col font-sans selection:bg-brand-100 selection:text-brand-900 transition-colors duration-150">
+    <div className="min-h-screen bg-background dark:bg-background-dark text-foreground dark:text-foreground-dark flex flex-col font-sans selection:bg-brand-100 selection:text-brand-900 transition-colors duration-150 w-full max-w-full overflow-x-hidden">
       {/* Top Header */}
       <Header />
 
       {/* Main Dynamic View Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-3.5 sm:px-6 py-4">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 overflow-x-hidden">
+
         {activeTab === 'dashboard' && <DashboardView />}
         {activeTab === 'transactions' && <TransactionsView />}
         {activeTab === 'budgets' && <BudgetsView />}

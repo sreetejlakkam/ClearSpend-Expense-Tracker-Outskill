@@ -332,10 +332,10 @@ export const QuickAddBar: React.FC = () => {
         {/* The Signature Quick-Add Input Bar */}
         <form
           onSubmit={handleParse}
-          className="relative flex items-center bg-white/95 backdrop-blur-2xl border-2 border-brand-600/70 focus-within:border-brand-700 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 transition-all"
+          className="relative flex items-center bg-white/95 dark:bg-surface-dark/95 backdrop-blur-2xl border-2 border-brand-600/70 focus-within:border-brand-700 dark:border-brand-500/60 rounded-2xl shadow-xl shadow-slate-900/10 p-1.5 transition-all"
         >
-          <div className="pl-3 pr-2 text-brand-600 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 animate-pulse text-brand-600" />
+          <div className="pl-3 pr-2 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 animate-pulse text-brand-600 dark:text-brand-400" />
           </div>
 
           <input
@@ -345,7 +345,7 @@ export const QuickAddBar: React.FC = () => {
             onChange={(e) => setInputVal(e.target.value)}
             placeholder="Type e.g. '380 zomato lunch' or '2k rent yesterday'…"
             disabled={isParsing}
-            className="flex-1 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-hidden py-1.5 pr-2 min-w-0"
+            className="flex-1 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-transparent focus:outline-hidden py-1.5 pr-2 min-w-0"
           />
 
           <div className="flex items-center gap-1">
@@ -367,7 +367,7 @@ export const QuickAddBar: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsManualModalOpen(true)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title="Manual Form"
             >
               <SlidersHorizontal className="w-4 h-4" />
@@ -378,4 +378,5 @@ export const QuickAddBar: React.FC = () => {
     </div>
   );
 };
+
 

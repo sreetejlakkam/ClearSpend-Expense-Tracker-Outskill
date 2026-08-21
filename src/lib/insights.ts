@@ -291,49 +291,71 @@ export async function generateAIInsights(
     }
   }
 
-  // High quality deterministic insight engine
+  // High quality deterministic insight engine with rich user-relevant analytics
   const currSym = currency === 'INR' ? '₹' : currency;
   const cards: Insight[] = [];
 
-  // Card 1: End of month forecast
+  // Insight 1: End of Month Pacing & Burn Forecast
   const diffFromLastMonth = projectedSpend - totalLastMonth;
   const isPacingHigher = diffFromLastMonth > 0 && totalLastMonth > 0;
+  const avgBurn = Math.round(totalThisMonth / Math.max(daysElapsed, 1));
 
   cards.push({
-    id: `insight_forecast_${Date.now()}`,
+    id: `insight_forecast_${Date.now()}_1`,
     user_id: userId,
     type: 'forecast',
-    title: `Projected spend: ${currSym}${Math.round(projectedSpend).toLocaleString()}`,
+    title: `Projected Spend: ${currSym}${Math.round(projectedSpend).toLocaleString()}`,
     body: isPacingHigher
-      ? `At your current pace of ${currSym}${Math.round(totalThisMonth / Math.max(daysElapsed, 1))}/day, you'll spend ${currSym}${Math.round(diffFromLastMonth).toLocaleString()} more than last month.`
-      : `You are on track to spend ${currSym}${Math.round(projectedSpend).toLocaleString()} this month with a sustainable daily average of ${currSym}${Math.round(totalThisMonth / Math.max(daysElapsed, 1))}/day.`,
+      ? `At your current pace of ${currSym}${avgBurn}/day, you are tracking to spend ${currSym}${Math.round(diffFromLastMonth).toLocaleString()} more than last month. Consider trimming discretionary dining.`
+      : `You are on track to spend ${currSym}${Math.round(projectedSpend).toLocaleString()} with a sustainable daily average of ${currSym}${avgBurn}/day.`,
     period_start: `${currentMonthStr}-01`,
     period_end: `${currentMonthStr}-${daysInMonth}`,
     is_dismissed: false,
     created_at: new Date().toISOString(),
   });
 
-  // Card 2: Top Mover
-  if (topMovers.length > 0) {
-    const top = topMovers[0];
+  // Insight 2: Weekend vs Weekday Dining Spike Analysis
+  let weekendDiningSpend = 0;
+  let totalDiningSpend = 0;
+  for (const t of thisMonthExpenses) {
+    const cat = categories.find((c) => c.id === t.category_id);
+    const catNameLower = (cat?.name || '').toLowerCase();
+    if (catNameLower.includes('food') || catNameLower.includes('dining') || catNameLower.includes('restaurant')) {
+      totalDiningSpend += t.amount;
+      const dayOfWeek = new Date(t.txn_date).getDay(); // 0 is Sun, 5 is Fri, 6 is Sat
+      if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
+        weekendDiningSpend += t.amount;
+      }
+    }
+  }
+
+  if (totalDiningSpend > 1000) {
+    const weekendRatio = Math.round((weekendDiningSpend / totalDiningSpend) * 100);
+    if (weekendRatio >= 55) {
+      cards.push({
+        id: `insight_weekend_${Date.now()}_2`,
+        user_id: userId,
+        type: 'top_mover',
+        title: `Weekend Dining Surge: ${weekendRatio}% of Food Spend`,
+        body: `${currSym}${weekendDiningSpend.toLocaleString()} out of ${currSym}${totalDiningSpend.toLocaleString()} dining spend occurs on Fri–Sun. Packing lunch or meal-prepping can save ~${currSym}${Math.round(weekendDiningSpend * 0.35).toLocaleString()}/month!`,
+        period_start: `${currentMonthStr}-01`,
+        period_end: `${currentMonthStr}-${daysInMonth}`,
+        is_dismissed: false,
+        created_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  // Insight 3: Micro-Transaction (Chai / Snacks / UPI) Leakage Audit
+  const microTransactions = thisMonthExpenses.filter((t) => t.amount <= 250);
+  const totalMicroSpend = microTransactions.reduce((sum, t) => sum + t.amount, 0);
+  if (microTransactions.length >= 4) {
     cards.push({
-      id: `insight_mover_${Date.now()}`,
+      id: `insight_micro_${Date.now()}_3`,
       user_id: userId,
-      type: 'top_mover',
-      title: `${top.category} is up ${Math.round(top.changePct)}%`,
-      body: `You spent ${currSym}${Math.round(top.increase).toLocaleString()} more on ${top.category} compared to this time last month.`,
-      period_start: `${currentMonthStr}-01`,
-      period_end: `${currentMonthStr}-${daysInMonth}`,
-      is_dismissed: false,
-      created_at: new Date().toISOString(),
-    });
-  } else {
-    cards.push({
-      id: `insight_streak_${Date.now()}`,
-      user_id: userId,
-      type: 'streak',
-      title: 'Spending consistency locked in',
-      body: `All core category expenses are tracking well within regular limits this month.`,
+      type: 'anomaly',
+      title: `Micro-Spend Audit: ${microTransactions.length} items (${currSym}${totalMicroSpend.toLocaleString()})`,
+      body: `Frequent small UPI payments under ${currSym}250 (chai, quick snacks, impulse treats) quietly added up to ${currSym}${totalMicroSpend.toLocaleString()} this month.`,
       period_start: `${currentMonthStr}-01`,
       period_end: `${currentMonthStr}-${daysInMonth}`,
       is_dismissed: false,
@@ -341,27 +363,72 @@ export async function generateAIInsights(
     });
   }
 
-  // Card 3: Subscription or savings alert
-  if (subscriptions.length > 0) {
-    const sub = subscriptions[0];
+  // Insight 4: Needs (Essential) vs Wants (Discretionary) 50/30/20 Ratio
+  let essentialSpend = 0;
+  let discretionarySpend = 0;
+  for (const t of thisMonthExpenses) {
+    const cat = categories.find((c) => c.id === t.category_id);
+    const catName = (cat?.name || '').toLowerCase();
+    if (
+      catName.includes('rent') ||
+      catName.includes('grocer') ||
+      catName.includes('transport') ||
+      catName.includes('fuel') ||
+      catName.includes('bill') ||
+      catName.includes('health') ||
+      catName.includes('medic') ||
+      catName.includes('util')
+    ) {
+      essentialSpend += t.amount;
+    } else {
+      discretionarySpend += t.amount;
+    }
+  }
+
+  if (totalThisMonth > 2000) {
+    const essentialPct = Math.round((essentialSpend / totalThisMonth) * 100);
+    const discretionaryPct = 100 - essentialPct;
     cards.push({
-      id: `insight_sub_${Date.now()}`,
+      id: `insight_ratio_${Date.now()}_4`,
       user_id: userId,
-      type: 'subscription',
-      title: `Recurring: ${sub.merchant} (${currSym}${sub.amount.toLocaleString()})`,
-      body: `Detected recurring charge active across ${sub.monthsCount} consecutive months. Keep track of unused subscriptions.`,
+      type: 'streak',
+      title: `Budget Split: ${essentialPct}% Needs vs ${discretionaryPct}% Wants`,
+      body:
+        discretionaryPct <= 35
+          ? `Great balance! Your lifestyle spending is well within the classic 50/30/20 benchmark (${discretionaryPct}% discretionary).`
+          : `Discretionary spending is at ${discretionaryPct}%. Trimming ${currSym}${Math.round(discretionarySpend * 0.2).toLocaleString()} could boost your monthly savings rate significantly.`,
       period_start: `${currentMonthStr}-01`,
       period_end: `${currentMonthStr}-${daysInMonth}`,
       is_dismissed: false,
       created_at: new Date().toISOString(),
     });
-  } else {
+  }
+
+  // Insight 5: Top Mover Category
+  if (topMovers.length > 0) {
+    const top = topMovers[0];
     cards.push({
-      id: `insight_anomaly_${Date.now()}`,
+      id: `insight_mover_${Date.now()}_5`,
       user_id: userId,
-      type: 'anomaly',
-      title: 'Ledger health verified',
-      body: `No duplicate charges or unusual transaction spikes detected in your latest records.`,
+      type: 'top_mover',
+      title: `${top.category} is up ${Math.round(top.changePct)}% vs Last Month`,
+      body: `You spent ${currSym}${Math.round(top.increase).toLocaleString()} more on ${top.category} compared to this time last month. Check if this is an anomaly or lifestyle creep.`,
+      period_start: `${currentMonthStr}-01`,
+      period_end: `${currentMonthStr}-${daysInMonth}`,
+      is_dismissed: false,
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  // Insight 6: Subscriptions & Recurring Charges
+  if (subscriptions.length > 0) {
+    const sub = subscriptions[0];
+    cards.push({
+      id: `insight_sub_${Date.now()}_6`,
+      user_id: userId,
+      type: 'subscription',
+      title: `Active Recurring Charge: ${sub.merchant}`,
+      body: `${currSym}${sub.amount.toLocaleString()} billed consecutively across ${sub.monthsCount} months. Review if you are actively using this subscription.`,
       period_start: `${currentMonthStr}-01`,
       period_end: `${currentMonthStr}-${daysInMonth}`,
       is_dismissed: false,
@@ -371,3 +438,4 @@ export async function generateAIInsights(
 
   return cards;
 }
+
