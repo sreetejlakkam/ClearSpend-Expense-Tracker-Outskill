@@ -20,12 +20,16 @@ import {
 } from '../../lib/finai';
 
 const INITIAL_PROMPTS = [
+  { icon: '🍔', label: 'How much did I spend on Zomato & Swiggy?' },
+  { icon: '🏆', label: 'What was my highest expense this month?' },
+  { icon: '🏦', label: 'What is my HDFC Bank balance?' },
+  { icon: '🛍️', label: 'Can I afford to buy a ₹10,000 gadget?' },
+  { icon: '⚡', label: 'What is my daily burn rate and runway?' },
   { icon: '📊', label: 'Where did I spend the most this month?' },
   { icon: '💡', label: 'Give me 3 actionable tips to cut spending' },
   { icon: '🎯', label: 'Am I on track with my budgets?' },
-  { icon: '🛡️', label: 'Analyze anomalies and duplicates' },
-  { icon: '💰', label: 'How can I improve my savings rate?' },
 ];
+
 
 export const FinAIView: React.FC = () => {
   const {
@@ -110,9 +114,17 @@ Ask me anything about your spending patterns, how to optimize budgets, or tap a 
         selectedMonthStr
       );
 
-      const aiReply = await queryGeminiAI(text, financialContext, apiKey);
+      const aiReply = await queryGeminiAI(text, financialContext, apiKey, {
+        profile,
+        wallets,
+        categories,
+        transactions,
+        budgets,
+        selectedMonthStr,
+      });
 
       const botMsg: ChatMessage = {
+
         id: (Date.now() + 1).toString(),
         sender: 'finai',
         text: aiReply,

@@ -62,12 +62,26 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* FinAI Quick Trigger */}
+          <button
+            onClick={() => setActiveTab('finai')}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'finai'
+                ? 'bg-gradient-to-r from-brand-700 to-indigo-600 text-white shadow-md shadow-brand-700/20'
+                : 'bg-indigo-50/90 text-indigo-700 border border-indigo-200/80 hover:bg-indigo-100'
+            }`}
+            title="Ask FinAI Copilot"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600 fill-indigo-100" />
+            <span className="hidden sm:inline">FinAI</span>
+          </button>
+
           {/* Review Inbox Alert Button */}
           {pendingReviewCount > 0 && (
             <button
               onClick={() => setActiveTab('review')}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 activeTab === 'review'
                   ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
                   : 'bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100'
@@ -85,7 +99,7 @@ export const Header: React.FC = () => {
           {/* Currency Pill / Settings trigger */}
           <button
             onClick={() => setActiveTab('settings')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 text-xs font-semibold border border-slate-200/80 transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 text-xs font-semibold border border-slate-200/80 transition-all shadow-xs"
           >
             <span className="font-bold text-brand-700">{profile?.base_currency === 'INR' ? '₹ INR' : profile?.base_currency}</span>
           </button>
@@ -93,5 +107,6 @@ export const Header: React.FC = () => {
       </div>
     </header>
   );
+
 };
 
