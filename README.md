@@ -1,19 +1,28 @@
-# ClearSpend — AI-Powered Expense Tracker & Money Coach
+# ClearSpend — AI-Powered Expense Tracker & Wealth Coach
 
-> **"Log spending in one line, trust the numbers, and get warned before your month goes wrong — not after."**
+> **"Log spending in one line, trust the numbers, get warned before your month goes wrong, and compound your wealth."**
 
-ClearSpend is a personal expense tracker and AI financial coach designed for salaried professionals and students managing spending across cash, UPI, and cards.
+ClearSpend is a modern, privacy-first personal expense tracker and AI financial coach designed for salaried professionals and students managing spending across cash, UPI, and cards.
 
 ---
 
-## 🌟 The 3 Core Problems ClearSpend Solves
+## 🌐 Live Production Links
+- **🚀 Live Web Application:** [https://clearspend-ai-expense-tracker.vercel.app](https://clearspend-ai-expense-tracker.vercel.app)
+- **📖 Comprehensive Product & Architecture Guide:** [APP_GUIDE.md](APP_GUIDE.md)
+- **📂 GitHub Repository:** [https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker](https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker)
+
+---
+
+## 🌟 The 4 Core Problems ClearSpend Solves
 
 1. **Logging Friction:** Traditional trackers require 5+ fields per expense, leading to abandonment within two weeks.  
-   👉 **Solution:** **One-line natural language quick-add** (e.g. *"380 zomato lunch"*, *"2k rent yesterday"*, *"got 50000 salary"*).
+   👉 **Solution:** **One-line natural language quick-add** (e.g. *"380 zomato lunch"*, *"2.2k shell petrol"*, *"85k salary hdfc"*).
 2. **Untrustworthy Data:** Automatic bank imports produce duplicates, wrong categories, and credit-card payments booked as income.  
    👉 **Solution:** **Self-healing ledger guard** with duplicate detection, >3x median anomaly detection, and a dedicated **Review Inbox**.
 3. **Passive Insights:** Standard apps show a rearview pie chart of a month that is already blown.  
-   👉 **Solution:** **Proactive AI budget warnings** and end-of-month spending pace forecasts (*"At this pace you'll spend ₹X on Food — cap it at ₹Z/day to stay on track"*).
+   👉 **Solution:** **Proactive envelope budget warnings** and end-of-month spending pace forecasts (*"At this pace you'll spend ₹X on Food — cap it at ₹Z/day to stay on track"*).
+4. **Discretionary Spending Blindness:** People underestimate the compounding potential of small avoidable daily spends.  
+   👉 **Solution:** **Power of Compounding Visualizer** showing how redirecting ₹2,000/month can grow to ₹20+ Lakhs in long-term index funds.
 
 ---
 
@@ -23,41 +32,39 @@ ClearSpend is a personal expense tracker and AI financial coach designed for sal
   - Understands Indian shorthand (`2k` = 2000, `1.5k` = 1500, `₹`, `rs`).
   - Resolves relative dates (`yesterday`, `last friday`, `day before yesterday`).
   - Surfaces AI Confidence badges: **High** (>0.8), **Check this** (0.5–0.8), **Guess** (<0.5).
-- **⭐ Self-Learning Category Rules:**
-  - Whenever you correct an AI-suggested category, ClearSpend learns the rule into `category_rules`.
-  - Offers a one-click retroactive update: *"Learned — Also apply to past transactions from this merchant?"*.
+- **⭐ Multi-Tiered FinAI Intelligence Copilot:**
+  - Answers specific financial questions using real ledger transactions (e.g. *"How much did I spend on Zomato this month?"*).
+  - Multi-model support: **Auto**, **Google Gemini 2.5 Flash**, and **Free Cloud AI (Puter.js)**.
+- **⭐ Envelope Budgeting & 5-Month Visual Infographics:**
+  - 5-Month historical dataset (April, May, June, July, August 2026).
+  - Multi-layer Area chart tracking Income vs Expenses vs Net Savings over 5 months.
+  - Stacked Category Trajectory charts.
+  - 50/30/20 Needs vs Wants split analyzer.
+  - Interactive Pacing & Burn Simulator.
+- **⭐ Power of Compounding Visualizer:**
+  - Interactive SIP compounding calculator comparing Fixed Deposits (6.5%), Nifty 50 Index Funds (12%), and Diversified Equity (15%).
 - **⭐ Review Inbox (Trust Guard):**
-  - Flags duplicate transaction pairs (matching fingerprints or same amount/date with high merchant similarity).
-  - Actions: **Merge** (keeps older, marks newer merged), **Keep Both**, or **Delete**.
-  - Flags unusual spending spikes (>3x category median).
-- **⭐ Interactive Donut & Category Breakdown:**
-  - Visual Recharts expense donut with interactive legend.
-  - Tap any category slice to instantly filter ledger history.
-- **⭐ Proactive Budget Pacing:**
-  - Real-time pace calculations vs. days elapsed.
-  - Daily spend target: `₹X/day left to stay on track`.
-  - Turns amber at 80% threshold and red past 100%.
-  - Suggested budget limits based on 3-month past spending averages.
-- **⭐ AI Coach Insight Cards:**
-  - Monthly forecast & pace digest.
-  - Top spending movers (largest Month-over-Month increases).
-  - Subscription creep detector (recurring charges across consecutive months).
+  - Flags duplicate transaction pairs within 60-second windows.
+  - Flags statistical spending anomalies (>3x category median).
+- **⭐ Multi-Language & Theme System:**
+  - Full localization for **English**, **తెలుగు (Telugu)**, and **हिन्दी (Hindi)**.
+  - 1-Click Sun ☀️ / Moon 🌙 theme toggle in the header.
+- **⭐ Self-Learning Category Rules:**
+  - Correcting an AI category automatically creates regex memory for future and past transactions.
 - **⭐ Data Management & Portability:**
-  - CSV export for all transactions.
-  - Multi-select mode for bulk recategorization and bulk deletion.
-  - Wallets CRUD (Cash, Bank, UPI Wallet, Credit Card).
-  - Instant One-Click Demo Mode with 40+ seeded realistic transactions.
+  - Full CSV export for all transactions.
+  - Instant One-Click Demo Mode with 100+ seeded multi-month realistic transactions.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Lucide React Icons, Recharts, date-fns, Canvas Confetti.
-- **Backend & Database:** Supabase Postgres with Row Level Security (RLS) on all tables (`user_id = auth.uid()`), Supabase Auth, and Supabase Edge Functions.
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Lucide React Icons, Recharts, Canvas Confetti.
 - **AI Engine:**
-  - Edge Functions: `parse-transaction`, `detect-duplicates`, `generate-insights`
-  - Model-agnostic LLM interface (`callLLM`) supporting Gemini (`gemini-2.5-flash`) and OpenAI (`gpt-4o-mini`).
-  - High-fidelity offline client fallback engine ensuring the app is 100% functional out of the box anywhere.
+  - Multi-Tiered LLM Orchestrator supporting Google Gemini 2.5 Flash and Free Browser Cloud AI.
+  - Supabase Edge Functions: `parse-transaction`, `detect-duplicates`, `generate-insights`.
+  - Offline-first deterministic math kernel ensuring 100% functionality with zero config.
+- **Database & Auth:** Supabase Postgres with Row Level Security (RLS) and email authentication.
 
 ---
 
@@ -77,15 +84,13 @@ category_rules    id, user_id, match_text(lower), category_id, hit_count, create
 insights          id, user_id, type[forecast|top_mover|subscription|streak|anomaly], title, body, payload, period_start, period_end, is_dismissed, created_at
 ```
 
-> **Critical Rule:** Amounts are ALWAYS stored as positive numbers. Direction is strictly carried by `kind` (`expense` or `income`). Credit card bill repayments are expenses, never income.
-
 ---
 
 ## 💻 Local Development Setup
 
 ### 1. Clone & Install Dependencies
 ```bash
-git clone https://github.com/<your-username>/ClearSpend-AI-Expense-Tracker.git
+git clone https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker.git
 cd ClearSpend-AI-Expense-Tracker
 npm install
 ```
@@ -110,40 +115,5 @@ npm run build
 
 ---
 
-## 🚀 Supabase & Vercel Deployment
-
-### Supabase Edge Functions Deployment
-```bash
-# Set your LLM secret in Supabase
-supabase secrets set LLM_API_KEY=your_gemini_api_key LLM_PROVIDER=gemini
-
-# Deploy functions
-supabase functions deploy parse-transaction
-supabase functions deploy detect-duplicates
-supabase functions deploy generate-insights
-```
-
-### Vercel Deployment
-1. Import repository on [Vercel](https://vercel.com).
-2. Framework Preset: **Vite**.
-3. Set environment variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` if using remote Supabase.
-4. Deploy!
-
----
-
-## 🎬 3-Minute Demo Script
-
-1. **Problem (20s):** "Most people abandon expense trackers within a month because manual logging has too much friction, and bank feeds create duplicate charges and categorize card payments as income. Once you stop trusting the number, you stop opening the app."
-2. **Solution (15s):** "ClearSpend: One-line natural logging, a self-healing ledger that catches duplicates, and proactive warnings before you overspend."
-3. **Live Demo (90s):**
-   - Type `380 zomato lunch` into the sticky bar → instantly parsed and categorized.
-   - Type `2k rent yesterday` → demonstrates Indian shorthand (`2k` -> ₹2,000) and relative date resolution.
-   - Correct one category → see the *"Learned — filed under Category. Also apply to past transactions?"* toast.
-   - Open the **Review Inbox** → review and merge the planted duplicate pair.
-   - Check the **Dashboard** → highlight the proactive amber forecast warning banner: *"At this pace you'll spend ₹X on Food — cap it at ₹Z/day to stay on track"*.
-4. **Conclusion (15s):** "By combining instant one-line capture with a self-repairing ledger and proactive AI coaching, ClearSpend turns personal budgeting from a tedious chore into effortless financial peace of mind."
-
----
-
 ## 🛡️ License
-MIT License. Built with ❤️ for financial wellness.
+MIT License. Built with ❤️ for personal financial empowerment.

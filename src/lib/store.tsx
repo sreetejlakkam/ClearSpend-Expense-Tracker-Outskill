@@ -143,7 +143,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    return saved ? JSON.parse(saved) : demoData.transactions;
+    if (saved) {
+      const parsed: Transaction[] = JSON.parse(saved);
+      // Auto-migrate if older single-month dataset is in storage
+      if (parsed.length < 50 && demoData.transactions.length >= 50) {
+        return demoData.transactions;
+      }
+      return parsed;
+    }
+    return demoData.transactions;
   });
 
   const [budgets, setBudgets] = useState<Budget[]>(() => {
@@ -628,7 +636,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTransactions(demo.transactions);
     setBudgets(demo.budgets);
     setCategoryRules(demo.rules);
-    addToast({ title: 'Ledger Reset', message: 'Restored realistic 40+ demo transactions.', type: 'success' });
+    addToast({ title: 'Ledger Reset', message: 'Restored realistic 5-month demo transactions (Apr-Aug 2026).', type: 'success' });
   };
 
   return (

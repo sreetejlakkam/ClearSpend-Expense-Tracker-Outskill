@@ -12,7 +12,7 @@ import {
   BarChart3,
   SlidersHorizontal,
   Coins,
-  ChevronRight,
+  Layers,
 } from 'lucide-react';
 import {
   BarChart,
@@ -22,6 +22,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  AreaChart,
+  Area,
+  CartesianGrid,
 } from 'recharts';
 import { Budget } from '../../types';
 import { useTranslation } from '../../lib/i18n';
@@ -38,7 +41,6 @@ export const BudgetsView: React.FC = () => {
     updateBudget,
     deleteBudget,
     getCategory3MonthAverage,
-    setActiveTab,
   } = useStore();
 
   const { t } = useTranslation();
@@ -88,7 +90,7 @@ export const BudgetsView: React.FC = () => {
   const totalDailyTarget = Math.round(remainingTotalBudget / daysRemaining);
   const currentDailyBurn = Math.round(totalSpentOnBudgeted / Math.max(daysElapsed, 1));
 
-  // Chart data for Infographics
+  // Current Month Chart Data for Infographics
   const chartData = useMemo(() => {
     return budgets.map((b) => {
       const cat = categories.find((c) => c.id === b.category_id);
@@ -107,6 +109,51 @@ export const BudgetsView: React.FC = () => {
       };
     });
   }, [budgets, categories, monthExpenses, daysElapsed, daysInMonth]);
+
+  // Multi-Month Trends (April, May, June, July, August 2026)
+  const multiMonthTrends = useMemo(() => {
+    const months = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
+    const monthLabels: Record<string, string> = {
+      '2026-04': 'Apr 26',
+      '2026-05': 'May 26',
+      '2026-06': 'Jun 26',
+      '2026-07': 'Jul 26',
+      '2026-08': 'Aug 26',
+    };
+
+    return months.map((mStr) => {
+      const activeTxns = transactions.filter((t) => t.status === 'active' && t.txn_date.startsWith(mStr));
+      const income = activeTxns.filter((t) => t.kind === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const expense = activeTxns.filter((t) => t.kind === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      const savings = Math.max(income - expense, 0);
+      const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0;
+      
+      const food = activeTxns.filter((t) => t.category_id === 'cat_food').reduce((sum, t) => sum + t.amount, 0);
+      const groceries = activeTxns.filter((t) => t.category_id === 'cat_groceries').reduce((sum, t) => sum + t.amount, 0);
+      const rent = activeTxns.filter((t) => t.category_id === 'cat_rent').reduce((sum, t) => sum + t.amount, 0);
+      const transport = activeTxns.filter((t) => t.category_id === 'cat_transport').reduce((sum, t) => sum + t.amount, 0);
+      const shopping = activeTxns.filter((t) => t.category_id === 'cat_shopping').reduce((sum, t) => sum + t.amount, 0);
+      const entertainment = activeTxns.filter((t) => t.category_id === 'cat_entertainment').reduce((sum, t) => sum + t.amount, 0);
+      const bills = activeTxns.filter((t) => t.category_id === 'cat_bills').reduce((sum, t) => sum + t.amount, 0);
+
+      return {
+        monthKey: mStr,
+        month: monthLabels[mStr] || mStr,
+        income,
+        expense,
+        savings,
+        savingsRate,
+        food,
+        groceries,
+        rent,
+        transport,
+        shopping,
+        entertainment,
+        bills,
+        budget: totalBudgeted,
+      };
+    });
+  }, [transactions, totalBudgeted]);
 
   // 50/30/20 Needs vs Wants breakdown for budgets
   const budgetRatio = useMemo(() => {
@@ -220,7 +267,7 @@ export const BudgetsView: React.FC = () => {
             {t('budgets.title', 'Monthly Budget Envelopes')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Intelligent envelope limits, proactive burn rate & velocity control
+            Envelope limits, 5-month trends, proactive burn rate & velocity infographics
           </p>
         </div>
         <button
@@ -520,15 +567,163 @@ export const BudgetsView: React.FC = () => {
       {/* 3B. TAB 2: Visual Infographics Analytics View */}
       {activeSubTab === 'infographics' && (
         <div className="space-y-4">
-          {/* Infographic 1: Budget vs Actual vs Projected Bar Chart */}
+
+          {/* Infographic 1: 5-Month Income, Spending & Savings Velocity Trajectory */}
+          <div className="p-4 sm:p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                    5-Month Financial Velocity & Savings Trend
+                  </h3>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Complete MoM progression across April, May, June, July, and August 2026
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 text-[10.5px] font-bold">
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Income
+                </span>
+                <span className="flex items-center gap-1 text-rose-500 dark:text-rose-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Expenses
+                </span>
+                <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" /> Net Savings
+                </span>
+              </div>
+            </div>
+
+            {/* Area Chart */}
+            <div className="h-64 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={multiMonthTrends} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="savingsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} tickFormatter={(v) => `${currSym}${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0F172A',
+                      borderRadius: '12px',
+                      color: '#fff',
+                      fontSize: '11.5px',
+                      border: 'none',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                    }}
+                    formatter={(val: number, name: string) => [
+                      `${currSym}${val.toLocaleString()}`,
+                      name === 'income' ? 'Total Income' : name === 'expense' ? 'Total Expenses' : 'Net Surplus Saved'
+                    ]}
+                  />
+                  <Area type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#incomeGrad)" />
+                  <Area type="monotone" dataKey="expense" stroke="#F43F5E" strokeWidth={2.5} fillOpacity={1} fill="url(#expenseGrad)" />
+                  <Area type="monotone" dataKey="savings" stroke="#6366F1" strokeWidth={2} fillOpacity={1} fill="url(#savingsGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* 5-Month Quick Metric Cards */}
+            <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {multiMonthTrends.map((m) => (
+                <div key={m.monthKey} className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-center border border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">{m.month}</span>
+                  <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums block mt-0.5">
+                    {currSym}{Math.round(m.expense / 1000)}k
+                  </span>
+                  <span className="text-[9.5px] font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                    {m.savingsRate}% saved
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Infographic 2: Category Trajectory Over 5 Months (Stacked & Multi-Bar) */}
+          <div className="p-4 sm:p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                    Category Spend Breakdown Across 5 Months
+                  </h3>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  See how spending in Food, Groceries, Rent, Transport & Shopping shifted
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold">
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#F97316]" /> Food
+                </span>
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" /> Groceries
+                </span>
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#6366F1]" /> Rent
+                </span>
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#0284C7]" /> Transport
+                </span>
+                <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#EC4899]" /> Shopping
+                </span>
+              </div>
+            </div>
+
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={multiMonthTrends} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.5} />
+                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} tickFormatter={(v) => `${currSym}${v >= 1000 ? `${(v/1000).toFixed(0)}k` : v}`} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0F172A',
+                      borderRadius: '12px',
+                      color: '#fff',
+                      fontSize: '11.5px',
+                      border: 'none',
+                    }}
+                    formatter={(val: number) => [`${currSym}${val.toLocaleString()}`]}
+                  />
+                  <Bar dataKey="rent" stackId="a" fill="#6366F1" />
+                  <Bar dataKey="groceries" stackId="a" fill="#10B981" />
+                  <Bar dataKey="food" stackId="a" fill="#F97316" />
+                  <Bar dataKey="transport" stackId="a" fill="#0284C7" />
+                  <Bar dataKey="shopping" stackId="a" fill="#EC4899" />
+                  <Bar dataKey="entertainment" stackId="a" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Infographic 3: Budget vs Actual Envelope Bar Chart (Current Month) */}
           <div className="p-4 sm:p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                  Budget Envelope vs. Actual Spend
+                  Current Month: Envelope Limit vs. Actual Spend
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Visual comparison across categories
+                  Visual comparison for {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-[10.5px]">
@@ -583,7 +778,7 @@ export const BudgetsView: React.FC = () => {
             </div>
           </div>
 
-          {/* Infographic 2: 50/30/20 Needs vs Wants Allocation Breakdown */}
+          {/* Infographic 4: 50/30/20 Needs vs Wants Allocation Breakdown */}
           <div className="p-4 sm:p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -699,53 +894,43 @@ export const BudgetsView: React.FC = () => {
                 </div>
 
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/70 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Simulated Month-End Total</span>
-                  <div className="text-base font-black text-slate-900 dark:text-white tabular-nums mt-0.5">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Projected Month End</span>
+                  <div className={`text-base font-black tabular-nums mt-0.5 ${simulatedMonthlyTotal > totalBudgeted ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>
                     {currSym}{Math.round(simulatedMonthlyTotal).toLocaleString()}
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/70 dark:border-slate-700">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Projected Net Savings</span>
-                  <div className={`text-base font-black tabular-nums mt-0.5 ${savingsDelta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {savingsDelta >= 0 ? '+' : ''}{currSym}{Math.round(savingsDelta).toLocaleString()}
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800">
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">Surplus Left</span>
+                  <div className="text-base font-black text-emerald-700 dark:text-emerald-300 tabular-nums mt-0.5">
+                    {savingsDelta >= 0 ? `+${currSym}${Math.round(savingsDelta).toLocaleString()}` : `-${currSym}${Math.round(Math.abs(savingsDelta)).toLocaleString()}`}
                   </div>
                 </div>
               </div>
             );
           })()}
-
-          {/* Quick link to Compounding view */}
-          <div
-            onClick={() => setActiveTab('compounding')}
-            className="cursor-pointer p-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-between gap-2 hover:bg-emerald-500/15 transition-all group"
-          >
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Want to invest simulated savings? Check the <strong>Power of Compounding</strong>
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
-          </div>
         </div>
       )}
 
-      {/* Create / Edit Budget Modal */}
+      {/* Envelope Modal (Create / Edit) */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingBudget ? 'Edit Envelope Budget' : 'Set Category Envelope'}
-        subtitle="Control monthly limits and pace warnings"
+        title={editingBudget ? 'Edit Budget Envelope' : 'New Budget Envelope'}
+        subtitle="Set a spending target and proactive warning threshold"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Select Category</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Category
+            </label>
             <select
               value={selectedCatId}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className="w-full text-xs font-semibold px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden"
+              className="w-full text-xs font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden"
+              required
             >
+              <option value="">Select an Expense Category</option>
               {categories
                 .filter((c) => c.kind === 'expense')
                 .map((c) => (
@@ -754,43 +939,34 @@ export const BudgetsView: React.FC = () => {
                   </option>
                 ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Monthly Limit ({currSym})
-            </label>
-            <input
-              type="number"
-              required
-              step="any"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 8000"
-              className="w-full text-xl font-bold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:bg-white dark:focus:bg-slate-750 focus:outline-hidden tabular-nums"
-            />
-            {/* Suggested 3-Month Average Hint */}
             {suggestedAverage > 0 && (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-brand-600 dark:text-brand-400" />
-                <span>
-                  Suggested based on last 3 months average:{' '}
-                  <button
-                    type="button"
-                    onClick={() => setAmount(suggestedAverage.toString())}
-                    className="font-bold text-brand-700 dark:text-brand-400 underline hover:text-brand-800"
-                  >
-                    {currSym}{suggestedAverage.toLocaleString()}/mo
-                  </button>
-                </span>
+              <p className="text-[11px] text-brand-700 dark:text-brand-400 mt-1">
+                💡 Historical 3-Month Average: {currSym}{suggestedAverage.toLocaleString()}/month
               </p>
             )}
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Alert Threshold ({alertThreshold}%)
+              Monthly Budget Envelope Limit ({currSym})
             </label>
+            <input
+              type="number"
+              min="100"
+              step="100"
+              required
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="e.g. 8000"
+              className="w-full text-base font-bold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-700 focus:outline-hidden tabular-nums"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <span>Proactive Warning Alert Threshold:</span>
+              <span className="font-mono text-brand-700 dark:text-brand-400">{alertThreshold}%</span>
+            </div>
             <input
               type="range"
               min="50"
@@ -798,11 +974,13 @@ export const BudgetsView: React.FC = () => {
               step="5"
               value={alertThreshold}
               onChange={(e) => setAlertThreshold(parseInt(e.target.value))}
-              className="w-full accent-brand-700 cursor-pointer"
+              className="w-full accent-brand-700"
             />
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              Turn bar amber when {alertThreshold}% of budget is reached.
-            </span>
+            <div className="flex items-center justify-between text-[10px] text-slate-400">
+              <span>50% (Early heads-up)</span>
+              <span>80% (Standard)</span>
+              <span>95% (Strict cap)</span>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -817,7 +995,7 @@ export const BudgetsView: React.FC = () => {
               type="submit"
               className="px-5 py-2 text-xs font-bold text-white bg-brand-700 hover:bg-brand-800 rounded-xl shadow-sm"
             >
-              {editingBudget ? 'Save Changes' : 'Create Budget'}
+              Save Envelope
             </button>
           </div>
         </form>
