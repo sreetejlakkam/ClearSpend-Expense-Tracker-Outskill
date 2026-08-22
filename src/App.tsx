@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from './lib/store';
 import { AuthView } from './components/auth/AuthView';
 import { OnboardingView } from './components/onboarding/OnboardingView';
@@ -15,9 +15,40 @@ import { FinAIView } from './components/finai/FinAIView';
 import { CompoundingView } from './components/compounding/CompoundingView';
 import { ReviewInboxView } from './components/review/ReviewInboxView';
 import { SettingsView } from './components/settings/SettingsView';
+import { parseBankSMS } from './lib/smsParser';
 
 export const AppContent: React.FC = () => {
-  const { isAuthenticated, isOnboarded, activeTab } = useStore();
+  const { isAuthenticated, isOnboarded, activeTab, openManualAdd, addToast } = useStore();
+
+  // Web Share Target SMS Handler (PWA)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedText = urlParams.get('text') || urlParams.get('title');
+
+    if (sharedText) {
+      const parsedSms = parseBankSMS(sharedText);
+      if (parsedSms.isTransaction && parsedSms.amount) {
+        openManualAdd({
+          amount: String(parsedSms.amount),
+          merchant: parsedSms.merchant,
+          date: parsedSms.txn_date,
+          note: `Shared via SMS: ${parsedSms.bank_name || 'Bank'}`,
+        });
+        addToast({
+          title: 'SMS Parsed!',
+          message: `Detected ${parsedSms.bank_name || 'Bank'} transaction for ₹${parsedSms.amount}.`,
+          type: 'success',
+        });
+      } else {
+        openManualAdd({
+          note: sharedText,
+        });
+      }
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [openManualAdd, addToast]);
 
   // Auth Gate
   if (!isAuthenticated) {

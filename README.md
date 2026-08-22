@@ -1,115 +1,96 @@
-# ClearSpend — AI-Powered Expense Tracker & Wealth Coach
+# ClearSpend — Zero-Friction Daily Expense Tracker & AI Money Coach
 
 > **"Log spending in one line, trust the numbers, get warned before your month goes wrong, and compound your wealth."**
 
-ClearSpend is a modern, privacy-first personal expense tracker and AI financial coach designed for salaried professionals and students managing spending across cash, UPI, and cards.
+ClearSpend is a modern, privacy-first personal expense tracker and AI financial coach designed for salaried professionals and students. It combines zero-typing capture modalities (Bank SMS parsing, Web Speech voice input, camera receipt scanning, CSV import) with real-time "Safe to Spend Today" pacing, multi-month envelope analytics, and proactive duplicate/anomaly guards.
 
 ---
 
 ## 🌐 Live Production Links
 - **🚀 Live Web Application:** [https://clearspend-ai-expense-tracker.vercel.app](https://clearspend-ai-expense-tracker.vercel.app)
 - **📖 Comprehensive Product & Architecture Guide:** [APP_GUIDE.md](APP_GUIDE.md)
+- **🛡️ Security & Privacy Model:** [SECURITY.md](SECURITY.md)
+- **🗺️ Product Roadmap:** [ROADMAP.md](ROADMAP.md)
 - **📂 GitHub Repository:** [https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker](https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker)
 
 ---
 
-## 🌟 The 4 Core Problems ClearSpend Solves
+## 🌟 The 5 Core Problems ClearSpend Solves
 
-1. **Logging Friction:** Traditional trackers require 5+ fields per expense, leading to abandonment within two weeks.  
-   👉 **Solution:** **One-line natural language quick-add** (e.g. *"380 zomato lunch"*, *"2.2k shell petrol"*, *"85k salary hdfc"*).
+1. **Logging Friction:** Traditional trackers require 5+ manual fields per expense, leading to abandonment within two weeks.  
+   👉 **Solution:** **Multi-modal Zero-Typing Capture** (One-line natural language, Indian Bank SMS parser for 20+ banks, microphone voice input, and receipt camera scanner).
 2. **Untrustworthy Data:** Automatic bank imports produce duplicates, wrong categories, and credit-card payments booked as income.  
-   👉 **Solution:** **Self-healing ledger guard** with duplicate detection, >3x median anomaly detection, and a dedicated **Review Inbox**.
-3. **Passive Insights:** Standard apps show a rearview pie chart of a month that is already blown.  
-   👉 **Solution:** **Proactive envelope budget warnings** and end-of-month spending pace forecasts (*"At this pace you'll spend ₹X on Food — cap it at ₹Z/day to stay on track"*).
-4. **Discretionary Spending Blindness:** People underestimate the compounding potential of small avoidable daily spends.  
+   👉 **Solution:** **Self-healing ledger guard** with rapid-tap (<120s) duplicate detection, >3x median anomaly detection, and a dedicated **Review Inbox**.
+3. **Passive Rearview Insights:** Standard apps show a rearview pie chart of a month that is already blown.  
+   👉 **Solution:** **Safe to Spend Today Daily Pacing Engine** and proactive envelope budget velocity warnings (*"At this pace you'll spend ₹X on Food — cap it at ₹Z/day to stay on track"*).
+4. **Uncertain Commitments:** Users don't know how much of their paycheck is already committed to rent, EMIs, and subscriptions.  
+   👉 **Solution:** **50/30/20 Committed vs Free Money Breakdown** and Recurring Subscriptions Register with T-3 day auto-debit alerts.
+5. **Discretionary Spending Blindness:** People underestimate the compounding potential of small avoidable daily spends.  
    👉 **Solution:** **Power of Compounding Visualizer** showing how redirecting ₹2,000/month can grow to ₹20+ Lakhs in long-term index funds.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Features & Architectural Modules
 
-- **⭐ One-Line Natural Language Quick Add:**
-  - Understands Indian shorthand (`2k` = 2000, `1.5k` = 1500, `₹`, `rs`).
-  - Resolves relative dates (`yesterday`, `last friday`, `day before yesterday`).
-  - Surfaces AI Confidence badges: **High** (>0.8), **Check this** (0.5–0.8), **Guess** (<0.5).
-- **⭐ Multi-Tiered FinAI Intelligence Copilot:**
-  - Answers specific financial questions using real ledger transactions (e.g. *"How much did I spend on Zomato this month?"*).
-  - Multi-model support: **Auto**, **Google Gemini 2.5 Flash**, and **Free Cloud AI (Puter.js)**.
-- **⭐ Envelope Budgeting & 5-Month Visual Infographics:**
-  - 5-Month historical dataset (April, May, June, July, August 2026).
-  - Multi-layer Area chart tracking Income vs Expenses vs Net Savings over 5 months.
-  - Stacked Category Trajectory charts.
-  - 50/30/20 Needs vs Wants split analyzer.
-  - Interactive Pacing & Burn Simulator.
-- **⭐ Power of Compounding Visualizer:**
-  - Interactive SIP compounding calculator comparing Fixed Deposits (6.5%), Nifty 50 Index Funds (12%), and Diversified Equity (15%).
-- **⭐ Review Inbox (Trust Guard):**
-  - Flags duplicate transaction pairs: exact fingerprint matches, rapid double-tap swipes (<120 seconds), and probable duplicates within 2 days.
-  - Flags statistical spending anomalies (>3x category median).
-- **⭐ Multi-Language & Theme System:**
-  - Full localization for **English**, **తెలుగు (Telugu)**, and **हिन्दी (Hindi)**.
-  - 1-Click Sun ☀️ / Moon 🌙 theme toggle in the header.
-- **⭐ Self-Learning Category Rules:**
-  - Correcting an AI category automatically creates regex memory for future and past transactions.
-- **⭐ Data Management & Portability:**
-  - Full CSV export for all transactions.
-  - Instant One-Click Demo Mode with 100+ seeded multi-month realistic transactions.
+### 1. ⚡ Multi-Modal Zero-Typing Capture
+- **One-Line Natural Language Quick Add:** Understands Indian shorthand (`2k` = 2000, `1.5k` = 1500, `₹`, `rs`) and relative dates (`yesterday`, `last friday`).
+- **Indian Bank SMS Regex Engine:** Deterministic regex support for 20+ major financial institutions (HDFC, SBI, ICICI, Axis, Kotak, PhonePe, Paytm, CRED).
+- **Web Speech Voice Capture:** Hands-free microphone logging with live floating transcript pill and auto-silence finalization.
+- **Gemini Vision Receipt OCR:** Camera receipt scanner extracting merchant, amount, date, and line items.
+- **Bank Statement CSV Importer:** Auto-detects delimiters (comma, semicolon, tab), maps debit/credit columns, and scans for existing duplicate transactions before importing.
+
+### 2. 📅 Daily Return Loop & Pacing Engine
+- **Safe-to-Spend Daily Allowance:**
+  $$\text{Safe to Spend Today} = \frac{\text{Monthly Flexible Budget} - \text{Spent So Far} - \text{Savings Goals Reserved}}{\text{Days Remaining in Month}}$$
+- **Daily Logging Streaks:** Streak tracker with "No spend today 🎉" zero-friction button and milestone celebration confetti (7, 14, 30, 60, 100 days).
+- **Web Push Notifications:** Customizable daily logging reminders (e.g. 9:00 PM) powered by service worker push alerts.
+
+### 3. 🎯 Forward-Looking Money & Wealth
+- **Recurring Subscriptions Register:** Centralized tracking for rent, Netflix, Spotify, gym, and EMIs with proactive T-3 day debit warning banners.
+- **Committed vs Free Money Card:** Visual 50/30/20 rule breakdown of Fixed Needs, Monthly Savings, and True Discretionary Free Pool.
+- **Savings Goals with Auto-Reservation:** Sets financial milestones (Emergency Fund, Japan Trip) and automatically reserves monthly contributions from the daily spend pool.
+- **Power of Compounding Visualizer:** Interactive SIP compounding calculator comparing Fixed Deposits (6.5%), Nifty 50 Index Funds (12%), and Diversified Equity (15%).
+
+### 4. 🛡️ Trust Guard & Review Inbox
+- **Multi-Tier Duplicate Scanner:** Detects exact fingerprint collisions, rapid double-tap swipes (<120s), and cross-day probable matches.
+- **Statistical Anomaly Detector:** Flags transactions exceeding 3x the category median spend.
+- **Review Inbox:** One-click merge, keep, or dismiss actions directly from the Overview and Ledger notification banners.
+
+### 5. 🌐 Offline-First Supabase Data Layer
+- **Outbox Queue (`clearspend_sync_outbox_v1`):** Works 100% offline with zero latency; automatically flushes pending mutations when network reconnects.
+- **Realtime Postgres Subscriptions:** Live multi-device sync across laptops, tablets, and phones.
+- **Supabase Auth:** Email/Password + Magic Link OTP passwordless authentication.
+
+### 6. 📱 Progressive Web App (PWA)
+- **Standalone PWA:** Installed directly to home screen via `manifest.json`.
+- **Web Share Target:** Forward bank SMS directly from native messaging apps into ClearSpend with automatic parsing!
 
 ---
 
 ## 🛠️ Technology Stack
 
 - **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Lucide React Icons, Recharts, Canvas Confetti.
-- **AI Engine:**
-  - Multi-Tiered LLM Orchestrator supporting Google Gemini 2.5 Flash and Free Browser Cloud AI.
-  - Supabase Edge Functions: `parse-transaction`, `detect-duplicates`, `generate-insights`.
-  - Offline-first deterministic math kernel ensuring 100% functionality with zero config.
-- **Database & Auth:** Supabase Postgres with Row Level Security (RLS) and email authentication.
-
----
-
-## 📁 Database Schema
-
-```sql
-profiles          id (=auth.uid), email, display_name, base_currency, onboarded_at, created_at
-wallets           id, user_id, name, type[cash|bank|card|wallet], currency, opening_balance, is_archived, created_at
-categories        id, user_id, name, icon, color, kind[expense|income], is_default, created_at
-transactions      id, user_id, wallet_id, category_id, amount(numeric > 0), kind[expense|income],
-                  txn_date(date), merchant, note, source[manual|nl|csv],
-                  ai_confidence(0-1), ai_suggested_category_id, was_corrected(bool),
-                  fingerprint(text), duplicate_of_id, status[active|merged|dismissed],
-                  created_at, updated_at
-budgets           id, user_id, category_id, period[monthly], amount, start_month(date), alert_threshold(int), created_at
-category_rules    id, user_id, match_text(lower), category_id, hit_count, created_at, updated_at
-insights          id, user_id, type[forecast|top_mover|subscription|streak|anomaly], title, body, payload, period_start, period_end, is_dismissed, created_at
-```
+- **Data & Sync:** Supabase Postgres, Realtime WebSockets, IndexedDB / LocalStorage Outbox Queue.
+- **AI & NLP:** Multi-tiered LLM Orchestrator (Google Gemini 2.5 Flash, Browser Puter.js, Deterministic Offline Regex Kernel).
+- **Testing:** Vitest test suite covering Bank SMS parsing, Safe-to-Spend pacing math, CSV statements, and zero-fabrication input parser.
 
 ---
 
 ## 💻 Local Development Setup
 
-### 1. Clone & Install Dependencies
 ```bash
+# 1. Clone & Install
 git clone https://github.com/sreetejlakkam/ClearSpend-AI-Expense-Tracker.git
 cd ClearSpend-AI-Expense-Tracker
 npm install
-```
 
-### 2. Configure Environment (Optional)
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
-*(If left blank, ClearSpend automatically runs with its built-in offline local storage & AI rule engine).*
+# 2. Run Tests
+npx vitest run
 
-### 3. Run Locally
-```bash
+# 3. Start Development Server
 npm run dev
-```
-Open `http://localhost:3000` in your browser.
 
-### 4. Build for Production
-```bash
+# 4. Production Build
 npm run build
 ```
 

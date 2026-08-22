@@ -36,6 +36,7 @@ export const TransactionsView: React.FC = () => {
     bulkRecategorize,
     bulkDeleteTransactions,
     setActiveTab,
+    pendingReviewCount,
   } = useStore();
 
 
@@ -201,6 +202,27 @@ export const TransactionsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Review Banner if items pending */}
+      {pendingReviewCount > 0 && (
+        <div
+          onClick={() => setActiveTab('review')}
+          className="cursor-pointer p-3.5 sm:p-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-2xl sm:rounded-3xl shadow-md flex items-center justify-between gap-3 group hover:opacity-95 transition-all"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+            <div>
+              <p className="text-xs sm:text-sm font-extrabold leading-tight">
+                {pendingReviewCount} transaction{pendingReviewCount > 1 ? 's' : ''} in Review Inbox
+              </p>
+              <p className="text-[11px] text-amber-100">
+                Tap to inspect duplicate candidates or anomalies
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-xl">Review & Fix →</span>
+        </div>
+      )}
 
 
       {/* Multi-Select Floating Action Bar */}

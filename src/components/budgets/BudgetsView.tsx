@@ -13,6 +13,8 @@ import {
   SlidersHorizontal,
   Coins,
   Layers,
+  Calendar,
+  Target,
 } from 'lucide-react';
 import {
   BarChart,
@@ -28,6 +30,9 @@ import {
 } from 'recharts';
 import { Budget } from '../../types';
 import { useTranslation } from '../../lib/i18n';
+import { CommittedMoneyCard } from './CommittedMoneyCard';
+import { RecurringView } from '../recurring/RecurringView';
+import { GoalsView } from '../goals/GoalsView';
 
 export const BudgetsView: React.FC = () => {
   const {
@@ -45,7 +50,7 @@ export const BudgetsView: React.FC = () => {
 
   const { t } = useTranslation();
 
-  const [activeSubTab, setActiveSubTab] = useState<'envelopes' | 'infographics' | 'simulator'>('envelopes');
+  const [activeSubTab, setActiveSubTab] = useState<'envelopes' | 'infographics' | 'subscriptions' | 'goals' | 'simulator'>('envelopes');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [selectedCatId, setSelectedCatId] = useState<string>('');
@@ -354,10 +359,10 @@ export const BudgetsView: React.FC = () => {
       </div>
 
       {/* 2. Interactive View Switcher Tabs */}
-      <div className="flex items-center justify-between gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveSubTab('envelopes')}
-          className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+          className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
             activeSubTab === 'envelopes'
               ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -369,26 +374,50 @@ export const BudgetsView: React.FC = () => {
 
         <button
           onClick={() => setActiveSubTab('infographics')}
-          className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+          className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
             activeSubTab === 'infographics'
               ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <BarChart3 className="w-3.5 h-3.5" />
-          <span>Visual Infographics</span>
+          <span>Committed & Trends</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('subscriptions')}
+          className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+            activeSubTab === 'subscriptions'
+              ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Subscriptions</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('goals')}
+          className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+            activeSubTab === 'goals'
+              ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+          }`}
+        >
+          <Target className="w-3.5 h-3.5" />
+          <span>Goals</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('simulator')}
-          className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+          className={`shrink-0 py-1.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
             activeSubTab === 'simulator'
               ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-sm'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Pacing Simulator</span>
+          <span>Simulator</span>
         </button>
       </div>
 
@@ -567,6 +596,8 @@ export const BudgetsView: React.FC = () => {
       {/* 3B. TAB 2: Visual Infographics Analytics View */}
       {activeSubTab === 'infographics' && (
         <div className="space-y-4">
+          {/* Committed vs Free Money Allocation Card */}
+          <CommittedMoneyCard />
 
           {/* Infographic 1: 5-Month Income, Spending & Savings Velocity Trajectory */}
           <div className="p-4 sm:p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
@@ -831,7 +862,17 @@ export const BudgetsView: React.FC = () => {
         </div>
       )}
 
-      {/* 3C. TAB 3: Interactive Pacing & Burn Simulator */}
+      {/* 3C. TAB 3: Recurring Subscriptions Register */}
+      {activeSubTab === 'subscriptions' && (
+        <RecurringView />
+      )}
+
+      {/* 3D. TAB 4: Savings Goals & Milestones */}
+      {activeSubTab === 'goals' && (
+        <GoalsView />
+      )}
+
+      {/* 3E. TAB 5: Interactive Pacing & Burn Simulator */}
       {activeSubTab === 'simulator' && (
         <div className="p-4 sm:p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
           <div>

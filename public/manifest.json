@@ -1,0 +1,33 @@
+{
+  "name": "ClearSpend — Zero-Friction Daily Expense Tracker",
+  "short_name": "ClearSpend",
+  "description": "Lightning-fast expense tracking with Indian bank SMS parsing, voice capture, and Safe-to-Spend pacing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e1b4b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/?shared_sms=true",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
