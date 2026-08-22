@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Flame, Sparkles, CheckCircle2, Award } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 import { calculateStreaks, loadStreakState, recordNoSpendToday, StreakState } from '../../lib/streaks';
 
 export const StreakCard: React.FC = () => {
   const { transactions, addToast } = useStore();
+  const { t } = useTranslation();
   const [streakState, setStreakState] = useState<StreakState>(() => loadStreakState());
   const [showMilestoneModal, setShowMilestoneModal] = useState<number | null>(null);
 
@@ -68,7 +70,7 @@ export const StreakCard: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                {streakState.currentStreak} Day{streakState.currentStreak === 1 ? '' : 's'} Streak
+                {streakState.currentStreak} {t('streaks.days_active', 'Days Active')}
               </h3>
               <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
                 {getMilestoneBadgeName(streakState.currentStreak)}
@@ -77,7 +79,7 @@ export const StreakCard: React.FC = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {streakState.loggedToday ? (
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Logged today • Streak preserved
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {t('streaks.logged_today', 'Logged Today ✨')}
                 </span>
               ) : (
                 'Log an expense or tap No Spend to keep the streak going!'
@@ -99,7 +101,7 @@ export const StreakCard: React.FC = () => {
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{streakState.loggedToday ? 'Saved for Today 🎉' : 'No spend today 🎉'}</span>
+            <span>{streakState.loggedToday ? t('streaks.logged_today', 'Logged Today ✨') : t('streaks.no_spend_btn', 'No spend today 🎉')}</span>
           </button>
         </div>
       </div>

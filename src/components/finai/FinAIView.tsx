@@ -48,15 +48,15 @@ export const FinAIView: React.FC = () => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('clearspend_gemini_key') || '');
-  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter'>('auto');
+  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter' | 'qwen'>('auto');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
   const [showConsentModal, setShowConsentModal] = useState(false);
-  const [pendingModelSwitch, setPendingModelSwitch] = useState<'auto' | 'gemini' | 'puter' | null>(null);
+  const [pendingModelSwitch, setPendingModelSwitch] = useState<'auto' | 'gemini' | 'puter' | 'qwen' | null>(null);
 
   const isCloudConsentGranted = profile?.ai_consent === 'cloud';
 
-  const handleModelChange = (newModel: 'auto' | 'gemini' | 'puter') => {
+  const handleModelChange = (newModel: 'auto' | 'gemini' | 'puter' | 'qwen') => {
     if (newModel !== 'auto' && !isCloudConsentGranted) {
       setPendingModelSwitch(newModel);
       setShowConsentModal(true);
@@ -323,9 +323,10 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
             onChange={(e) => handleModelChange(e.target.value as any)}
             className="text-[11px] font-bold px-2.5 py-1.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-slate-100 focus:outline-hidden cursor-pointer"
           >
-            <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Offline Engine)</option>
+            <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Smart Engine)</option>
             <option value="gemini" className="bg-slate-900 text-white">🤖 Gemini 2.5 Flash</option>
             <option value="puter" className="bg-slate-900 text-white">✨ Free Cloud AI (Puter)</option>
+            <option value="qwen" className="bg-slate-900 text-white">🚀 Qwen 2.5 Free AI</option>
           </select>
 
           <button

@@ -10,10 +10,12 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 import { calculateSafeToSpend } from '../../lib/pacing';
 
 export const SafeToSpendCard: React.FC = () => {
   const { transactions, budgets, recurringItems, goals, profile, setActiveTab } = useStore();
+  const { t } = useTranslation();
   const [showExplainer, setShowExplainer] = useState(false);
 
   const pacing = calculateSafeToSpend(transactions, budgets, recurringItems, goals, new Date());
@@ -62,7 +64,7 @@ export const SafeToSpendCard: React.FC = () => {
             </div>
             <div>
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                Safe To Spend Today
+                {t('safe.title', 'Safe To Spend Today')}
               </span>
               <span className="text-[10px] text-slate-400">
                 Day {pacing.currentDay} of {pacing.daysInMonth} ({pacing.daysRemaining} days remaining)

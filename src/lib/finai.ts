@@ -210,10 +210,11 @@ export function loadPuterScript(): Promise<boolean> {
   return puterScriptPromise;
 }
 
-// 2. Call Free Browser Cloud LLM via Puter.js (GPT-4o-mini / Claude / Mistral - Free & Zero Key Required)
+// 2. Call Free Browser Cloud LLM via Puter.js (GPT-4o-mini / Qwen 2.5 / Claude / Mistral - Free & Zero Key Required)
 export async function queryPuterAI(
   prompt: string,
   financialContext: string,
+  modelName: string = 'gpt-4o-mini',
   language: 'en' | 'te' | 'hi' = 'en'
 ): Promise<string> {
   const loaded = await loadPuterScript();
@@ -238,17 +239,32 @@ CRITICAL INSTRUCTION:
 
   const fullPrompt = `${systemInstruction}\n\n=== USER LIVE FINANCIAL LEDGER DATA ===\n${financialContext}\n\n=== USER SPECIFIC QUERY ===\n${prompt}`;
 
-  const res = await (window as any).puter.ai.chat(fullPrompt, { model: 'gpt-4o-mini' });
-
-  if (typeof res === 'string') return res;
-  if (res?.message?.content) return res.message.content;
-  if (res?.text) return res.text;
-  return String(res);
+  try {
+    const res = await (window as any).puter.ai.chat(fullPrompt, { model: modelName });
+    if (typeof res === 'string') return res;
+    if (res?.message?.content) return res.message.content;
+    if (res?.text) return res.text;
+    return String(res);
+  } catch (err) {
+    // If specific model has issues, fallback to reliable gpt-4o-mini
+    if (modelName !== 'gpt-4o-mini') {
+      try {
+        const fallbackRes = await (window as any).puter.ai.chat(fullPrompt, { model: 'gpt-4o-mini' });
+        if (typeof fallbackRes === 'string') return fallbackRes;
+        if (fallbackRes?.message?.content) return fallbackRes.message.content;
+        if (fallbackRes?.text) return fallbackRes.text;
+        return String(fallbackRes);
+      } catch (fallbackErr) {
+        throw fallbackErr;
+      }
+    }
+    throw err;
+  }
 }
 
 export interface FinAIQueryResponse {
   text: string;
-  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Free AI Copilot (Offline)' | 'Free AI Copilot';
+  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Qwen 2.5 Free AI' | 'Free AI Copilot (Offline)' | 'Free AI Copilot';
 }
 
 // 3. Universal Multi-Tiered FinAI Query Orchestrator with Consent Gate
@@ -264,7 +280,7 @@ export async function queryFinAIChat(
   },
   options?: {
     apiKey?: string;
-    preferredModel?: 'auto' | 'gemini' | 'puter';
+    preferredModel?: 'auto' | 'gemini' | 'puter' | 'qwen';
     language?: 'en' | 'te' | 'hi';
   }
 ): Promise<FinAIQueryResponse> {
@@ -300,14 +316,29 @@ export async function queryFinAIChat(
         modelUsed: 'Google Gemini 2.5 Flash',
       };
     } catch (err) {
-      console.warn('Gemini query failed, attempting Puter free cloud AI:', err);
+      console.warn('Gemini query failed, attempting free cloud AI:', err);
     }
   }
 
-  // Mode 2: Puter Free Cloud AI (Zero-config free LLM running in browser)
-  if (preferredModel === 'puter' || preferredModel === 'auto') {
+  // Mode 2: Qwen 2.5 Free AI (if explicitly chosen)
+  if (preferredModel === 'qwen') {
     try {
-      const puterText = await queryPuterAI(prompt, financialContext, language);
+      const qwenText = await queryPuterAI(prompt, financialContext, 'qwen/qwen-2.5-72b-instruct', language);
+      if (qwenText && qwenText.trim().length > 10) {
+        return {
+          text: qwenText,
+          modelUsed: 'Qwen 2.5 Free AI',
+        };
+      }
+    } catch (err) {
+      console.warn('Qwen free AI query failed, falling back to Puter GPT engine:', err);
+    }
+  }
+
+  // Mode 3: Puter Free Cloud AI (Zero-config free LLM running in browser)
+  if (preferredModel === 'puter' || preferredModel === 'auto' || preferredModel === 'qwen') {
+    try {
+      const puterText = await queryPuterAI(prompt, financialContext, 'gpt-4o-mini', language);
       if (puterText && puterText.trim().length > 10) {
         return {
           text: puterText,
@@ -319,7 +350,7 @@ export async function queryFinAIChat(
     }
   }
 
-  // Mode 3: Built-in Free AI Engine (100% data-grounded)
+  // Mode 4: Built-in Free AI Engine (100% data-grounded)
   const localText = generateDeterministicFinAIResponse(prompt, state, language);
   return {
     text: localText,

@@ -18,10 +18,12 @@ import {
   Crown,
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 import { sendFamilyAIChatMessage } from '../../lib/familyAI';
 import { Modal } from '../common/Modal';
 
 export const FamilyRoomView: React.FC = () => {
+  const { t } = useTranslation();
   const {
     profile,
     household,
@@ -390,7 +392,7 @@ export const FamilyRoomView: React.FC = () => {
               title="Preview what your partner sees"
             >
               {isPartnerPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              <span>{isPartnerPreview ? 'Exit Partner Preview' : 'Preview Partner View'}</span>
+              <span>{isPartnerPreview ? 'Exit Partner Preview' : t('family.partner_preview', 'Preview Partner View')}</span>
             </button>
 
             <button
@@ -398,7 +400,7 @@ export const FamilyRoomView: React.FC = () => {
               className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>Invite Partner</span>
+              <span>{t('family.invite_partner', 'Invite Partner')}</span>
             </button>
           </div>
         </div>
@@ -425,7 +427,7 @@ export const FamilyRoomView: React.FC = () => {
                   : 'text-slate-300 hover:text-white'
               }`}
             >
-              👨‍👩‍👧 Together
+              👨‍👩‍👧 {t('family.together', 'Together')}
             </button>
             <button
               onClick={() => setChartLens('just_me')}
@@ -435,7 +437,7 @@ export const FamilyRoomView: React.FC = () => {
                   : 'text-slate-300 hover:text-white'
               }`}
             >
-              👤 Just Me
+              👤 {t('family.just_me', 'Just Me')}
             </button>
           </div>
         </div>
@@ -444,7 +446,7 @@ export const FamilyRoomView: React.FC = () => {
         <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-1">
           <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
             <span className="text-[10px] sm:text-xs font-bold text-teal-300 block uppercase">
-              {chartLens === 'together' ? 'Combined Income' : 'My Income'}
+              {chartLens === 'together' ? t('family.combined_income', 'Combined Income') : 'My Income'}
             </span>
             <span className="text-base sm:text-2xl font-black tracking-tight text-white block mt-0.5">
               ₹{(chartLens === 'together' ? combinedIncome : userIncome).toLocaleString('en-IN')}
@@ -452,7 +454,7 @@ export const FamilyRoomView: React.FC = () => {
           </div>
           <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
             <span className="text-[10px] sm:text-xs font-bold text-rose-300 block uppercase">
-              {chartLens === 'together' ? 'Combined Outflow' : 'My Outflow'}
+              {chartLens === 'together' ? t('family.combined_outflow', 'Combined Outflow') : 'My Outflow'}
             </span>
             <span className="text-base sm:text-2xl font-black tracking-tight text-white block mt-0.5">
               ₹{(chartLens === 'together' ? combinedExpense : (userSummary?.total_expense || 0)).toLocaleString('en-IN')}
@@ -460,7 +462,7 @@ export const FamilyRoomView: React.FC = () => {
           </div>
           <div className="p-3 sm:p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
             <span className="text-[10px] sm:text-xs font-bold text-emerald-300 block uppercase">
-              {chartLens === 'together' ? 'Combined Savings' : 'My Savings'}
+              {chartLens === 'together' ? t('family.combined_savings', 'Combined Savings') : 'My Savings'}
             </span>
             <span className="text-base sm:text-2xl font-black tracking-tight text-emerald-400 block mt-0.5">
               ₹{(chartLens === 'together' ? combinedSavings : (userSummary?.net_savings || 0)).toLocaleString('en-IN')}

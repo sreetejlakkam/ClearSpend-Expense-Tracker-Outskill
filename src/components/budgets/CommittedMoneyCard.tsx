@@ -1,9 +1,11 @@
 import React from 'react';
 import { Layers } from 'lucide-react';
 import { useStore } from '../../lib/store';
+import { useTranslation } from '../../lib/i18n';
 
 export const CommittedMoneyCard: React.FC = () => {
   const { transactions, recurringItems, goals, profile, selectedMonthStr } = useStore();
+  const { t } = useTranslation();
 
   const currSym = profile?.base_currency === 'INR' ? '₹' : (profile?.base_currency || '₹');
 
@@ -40,7 +42,7 @@ export const CommittedMoneyCard: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-black text-slate-900 dark:text-white">
-              Committed vs Free Money
+              {t('budgets.committed_title', 'Committed vs Free Money')}
             </h3>
             <p className="text-[11px] text-slate-400">
               50/30/20 Rule Breakdown on {currSym}{monthlyIncome.toLocaleString()} Monthly Cashflow

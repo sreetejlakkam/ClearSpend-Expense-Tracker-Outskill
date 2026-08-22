@@ -69,22 +69,22 @@ export const Header: React.FC = () => {
             <span>{household?.name || 'Shared Family Room'} • Combined Household Lens Active</span>
           </div>
         )}
-        <div className="max-w-4xl mx-auto px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-2">
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 py-1.5 sm:py-2.5 flex items-center justify-between gap-1 sm:gap-2">
           
           {/* Left: App Logo & Brand (Click opens About Us modal) */}
-          <div className="flex items-center min-w-0 shrink-0">
+          <div className="flex items-center shrink-0">
             <button
               onClick={() => setIsAboutModalOpen(true)}
               className="cursor-pointer flex items-center gap-1.5 sm:gap-2 group text-left focus:outline-hidden"
               title="About ClearSpend • Click to view mission & architecture"
               aria-label="About ClearSpend"
             >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-brand-700 via-indigo-600 to-emerald-500 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-all shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-brand-700 via-indigo-600 to-emerald-500 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-all shrink-0">
                 <Sparkles className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-indigo-100" />
               </div>
-              <div className="flex flex-col">
+              <div className="hidden md:flex flex-col">
                 <div className="flex items-center gap-1">
-                  <span className="font-black text-sm sm:text-base leading-none tracking-tight text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors hidden min-[370px]:inline">
+                  <span className="font-black text-sm sm:text-base leading-none tracking-tight text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                     {t('app.title', 'ClearSpend')}
                   </span>
                   <Info className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hidden sm:inline" />
@@ -93,13 +93,13 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Month Switcher & Household Scope Switcher */}
-          <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 mx-auto">
+          {/* Center: Household Scope Switcher & Month Switcher */}
+          <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0">
             {/* Household Switcher Pill (👤 My Money ⇄ 👨‍👩‍👧 Family) */}
             <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 rounded-xl p-0.5 shadow-inner-sm shrink-0">
               <button
                 onClick={() => setViewScope('personal')}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
+                className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
                   viewScope === 'personal'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -111,7 +111,7 @@ export const Header: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewScope('household')}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
+                className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
                   viewScope === 'household'
                     ? 'bg-teal-600 dark:bg-teal-500 text-white shadow-xs font-black'
                     : 'text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400'
@@ -131,9 +131,9 @@ export const Header: React.FC = () => {
                 title="Previous Month"
                 aria-label="Previous Month"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
-              <span className="text-[10.5px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 px-1 sm:px-1.5 select-none min-w-[55px] sm:min-w-[75px] text-center capitalize">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 px-1 sm:px-1.5 select-none min-w-[50px] sm:min-w-[70px] text-center capitalize">
                 {monthName}
               </span>
               <button
@@ -142,14 +142,14 @@ export const Header: React.FC = () => {
                 title="Next Month"
                 aria-label="Next Month"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </button>
             </div>
           </div>
 
           {/* Right: Light/Dark Mode Button + Language Switcher + Account Details in Settings Button */}
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {/* Light / Dark Mode Toggle Button (In between Month and Language) */}
+            {/* Light / Dark Mode Toggle Button */}
             <button
               onClick={toggleTheme}
               className="p-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-all shadow-xs"
@@ -166,7 +166,7 @@ export const Header: React.FC = () => {
             {/* Quick Language Switcher Pill */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-0.5 px-2 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-wider border border-slate-200/80 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-all shadow-xs"
+              className="flex items-center gap-0.5 px-1.5 sm:px-2 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-wider border border-slate-200/80 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-all shadow-xs"
               title="Switch Language (English / తెలుగు / हिन्दी)"
               aria-label="Switch Language"
             >
@@ -177,7 +177,7 @@ export const Header: React.FC = () => {
             {/* Account Login Details in the Settings Icon Button (Far Right) */}
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs border ${
+              className={`flex items-center gap-1 sm:gap-1.5 p-1 sm:px-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs border ${
                 activeTab === 'settings'
                   ? 'bg-brand-50 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 border-brand-400/80 ring-1 ring-brand-500'
                   : 'bg-slate-100/90 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700'
@@ -187,20 +187,20 @@ export const Header: React.FC = () => {
             >
               {/* Avatar Pill with Active Status Indicator */}
               <div className="relative flex items-center justify-center">
-                <div className="w-5 h-5 sm:w-5.5 sm:h-5.5 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center text-[9.5px] sm:text-[10px] font-black shadow-xs">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center text-[9px] font-black shadow-xs">
                   {userInitials || <UserCircle className="w-3.5 h-3.5" />}
                 </div>
                 {isAuthenticated && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-surface-dark" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-white dark:border-surface-dark" />
                 )}
               </div>
 
-              {/* User Name & Settings Cog */}
-              <div className="flex items-center gap-1">
-                <span className="text-[11px] sm:text-xs font-bold truncate max-w-[55px] sm:max-w-[90px]">
+              {/* User Name & Settings Cog on sm+ */}
+              <div className="hidden sm:flex items-center gap-1">
+                <span className="text-[11px] font-bold truncate max-w-[70px]">
                   {firstName}
                 </span>
-                <SettingsIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400 dark:text-slate-400" />
+                <SettingsIcon className="w-3 h-3 text-slate-400 dark:text-slate-400" />
               </div>
             </button>
           </div>
