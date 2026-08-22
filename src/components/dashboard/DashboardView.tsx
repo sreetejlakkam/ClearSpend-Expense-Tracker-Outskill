@@ -33,6 +33,8 @@ import {
 import { useStore } from '../../lib/store';
 import { useTranslation } from '../../lib/i18n';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { SafeToSpendCard } from './SafeToSpendCard';
+import { StreakCard } from './StreakCard';
 
 export const DashboardView: React.FC = () => {
   const { t } = useTranslation();
@@ -310,7 +312,13 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* 2b. FinAI Financial Copilot Interactive Launcher */}
+      {/* 2a. Daily Safe To Spend Hero Allowance */}
+      <SafeToSpendCard />
+
+      {/* 2b. Daily Logging Streaks & No Spend Today */}
+      <StreakCard />
+
+      {/* 2c. FinAI Financial Copilot Interactive Launcher */}
       <div
         onClick={() => setActiveTab('finai')}
         className="cursor-pointer p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 hover:from-slate-800 hover:via-indigo-900 hover:to-slate-800 text-white rounded-2xl sm:rounded-3xl shadow-lg border border-indigo-500/30 flex items-center justify-between gap-3 group transition-all"

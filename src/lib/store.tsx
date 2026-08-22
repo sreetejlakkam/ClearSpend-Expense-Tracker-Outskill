@@ -5,8 +5,10 @@ import {
   Category,
   CategoryRule,
   DuplicatePair,
+  Goal,
   Insight,
   Profile,
+  RecurringItem,
   Transaction,
   Wallet,
 } from '../types';
@@ -94,6 +96,8 @@ interface StoreContextType {
   budgets: Budget[];
   categoryRules: CategoryRule[];
   insights: Insight[];
+  recurringItems: RecurringItem[];
+  goals: Goal[];
 
   // Review Queue
   duplicatePairs: DuplicatePair[];
@@ -128,6 +132,14 @@ interface StoreContextType {
   updateBudget: (id: string, updates: Partial<Budget>) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
   getCategory3MonthAverage: (categoryId: string) => number;
+
+  // Recurring & Goals CRUD
+  addRecurringItem: (item: Omit<RecurringItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateRecurringItem: (id: string, updates: Partial<RecurringItem>) => Promise<void>;
+  deleteRecurringItem: (id: string) => Promise<void>;
+  addGoal: (goal: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
 
   // AI & Parsing
   parseNaturalLanguage: (text: string) => Promise<ParseOutcome>;
@@ -164,6 +176,8 @@ const STORAGE_KEYS = {
   RULES: 'clearspend_rules_v1',
   INSIGHTS: 'clearspend_insights_v1',
   IS_DEMO: 'clearspend_is_demo_v1',
+  RECURRING: 'clearspend_recurring_v1',
+  GOALS: 'clearspend_goals_v1',
 };
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -215,6 +229,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const saved = localStorage.getItem(STORAGE_KEYS.RULES);
     if (saved) return JSON.parse(saved);
     return isDemoSession ? demoData.rules : [];
+  });
+
+  const [recurringItems, setRecurringItems] = useState<RecurringItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.RECURRING);
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? (demoData as any).recurringItems || [] : [];
+  });
+
+  const [goals, setGoals] = useState<Goal[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.GOALS);
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? (demoData as any).goals || [] : [];
   });
 
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -277,6 +303,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.RULES, JSON.stringify(categoryRules));
   }, [categoryRules]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.RECURRING, JSON.stringify(recurringItems));
+  }, [recurringItems]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+  }, [goals]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.IS_DEMO, String(isDemoSession));
@@ -963,6 +997,58 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return Math.round(total / 3) || 2000;
   };
 
+  // Recurring Subscriptions CRUD
+  const addRecurringItem = async (data: Omit<RecurringItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    const userId = profile?.id || 'offline_user';
+    const newItem: RecurringItem = {
+      id: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      user_id: userId,
+      ...data,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setRecurringItems((prev) => [newItem, ...prev]);
+    addToast({ title: 'Subscription Added', message: `${newItem.merchant} added to recurring register.`, type: 'success' });
+  };
+
+  const updateRecurringItem = async (id: string, updates: Partial<RecurringItem>) => {
+    setRecurringItems((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updates, updated_at: new Date().toISOString() } : r))
+    );
+    addToast({ title: 'Updated', message: 'Recurring item updated.', type: 'success' });
+  };
+
+  const deleteRecurringItem = async (id: string) => {
+    setRecurringItems((prev) => prev.filter((r) => r.id !== id));
+    addToast({ title: 'Removed', message: 'Subscription removed from register.', type: 'info' });
+  };
+
+  // Savings Goals CRUD
+  const addGoal = async (data: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    const userId = profile?.id || 'offline_user';
+    const newGoal: Goal = {
+      id: `goal_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      user_id: userId,
+      ...data,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setGoals((prev) => [newGoal, ...prev]);
+    addToast({ title: 'Goal Created', message: `Savings goal "${newGoal.title}" created!`, type: 'success' });
+  };
+
+  const updateGoal = async (id: string, updates: Partial<Goal>) => {
+    setGoals((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, ...updates, updated_at: new Date().toISOString() } : g))
+    );
+    addToast({ title: 'Goal Updated', message: 'Savings goal updated.', type: 'success' });
+  };
+
+  const deleteGoal = async (id: string) => {
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+    addToast({ title: 'Goal Removed', message: 'Savings goal deleted.', type: 'info' });
+  };
+
   // Parsing Natural Language
   const parseNaturalLanguage = async (text: string): Promise<ParseOutcome> => {
     return parseTransactionInput(text, categories, wallets, categoryRules, profile?.base_currency || 'INR');
@@ -982,6 +1068,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTransactions(demo.transactions);
     setBudgets(demo.budgets);
     setCategoryRules(demo.rules);
+    setRecurringItems((demo as any).recurringItems || []);
+    setGoals((demo as any).goals || []);
     addToast({ title: 'Ledger Reset', message: 'Restored realistic multi-month demo transactions.', type: 'success' });
   };
 
@@ -1012,6 +1100,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         budgets,
         categoryRules,
         insights,
+        recurringItems,
+        goals,
         duplicatePairs,
         anomalies,
         pendingReviewCount,
@@ -1034,6 +1124,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateBudget,
         deleteBudget,
         getCategory3MonthAverage,
+        addRecurringItem,
+        updateRecurringItem,
+        deleteRecurringItem,
+        addGoal,
+        updateGoal,
+        deleteGoal,
         parseNaturalLanguage,
         refreshInsights,
         dismissInsight,

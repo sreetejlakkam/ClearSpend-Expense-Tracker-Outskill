@@ -24,11 +24,19 @@ import {
   Monitor,
   Languages,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  BellRing,
+  Trash
 } from 'lucide-react';
 
 import { Category, TransactionKind, Wallet, WalletType } from '../../types';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import {
+  loadNotificationSettings,
+  saveNotificationSettings,
+  requestNotificationPermission,
+  NotificationSettings
+} from '../../lib/notifications';
 
 const AVAILABLE_ICONS = [
   'Utensils', 'ShoppingCart', 'Car', 'ShoppingBag', 'Zap', 'Home',
@@ -58,9 +66,37 @@ export const SettingsView: React.FC = () => {
     categoryRules,
     transactions,
     resetToDemoData,
+    clearAllUserData,
     logout,
     setActiveTab
   } = useStore();
+
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(() => loadNotificationSettings());
+
+  const handleToggleNotifications = async () => {
+    if (!notifSettings.enabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        alert('Please allow notification permissions in your browser settings.');
+        return;
+      }
+    }
+    const updated = { ...notifSettings, enabled: !notifSettings.enabled };
+    setNotifSettings(updated);
+    saveNotificationSettings(updated);
+  };
+
+  const handleToggleReminder = (key: keyof NotificationSettings) => {
+    const updated = { ...notifSettings, [key]: !notifSettings[key] };
+    setNotifSettings(updated);
+    saveNotificationSettings(updated);
+  };
+
+  const handleDeleteAllData = () => {
+    if (confirm('Are you sure you want to delete all transactions, custom categories, rules and start fresh? This cannot be undone.')) {
+      clearAllUserData();
+    }
+  };
 
   // Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -522,6 +558,70 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
+      {/* 8b. Push Notifications & Daily Reminders */}
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BellRing className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+              Reminders & Push Alerts
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleNotifications}
+            className={`px-3 py-1 text-xs font-bold rounded-xl transition-all ${
+              notifSettings.enabled
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {notifSettings.enabled ? 'Push Active' : 'Enable Push'}
+          </button>
+        </div>
+
+        <div className="space-y-2.5 pt-1 divide-y divide-slate-100 dark:divide-slate-800">
+          <label className="flex items-center justify-between pt-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+            <div>
+              <span className="block font-bold">Daily Spend Check-in (9:00 PM)</span>
+              <span className="text-[11px] text-slate-400">Remind to log expenses in 3 seconds before bed</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifSettings.enabled}
+              onChange={handleToggleNotifications}
+              className="rounded accent-brand-600"
+            />
+          </label>
+
+          <label className="flex items-center justify-between pt-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+            <div>
+              <span className="block font-bold">T-3 Day Subscription Warnings</span>
+              <span className="text-[11px] text-slate-400">Get alerted 3 days before recurring auto-debits</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifSettings.recurringDebitWarnings}
+              onChange={() => handleToggleReminder('recurringDebitWarnings')}
+              className="rounded accent-brand-600"
+            />
+          </label>
+
+          <label className="flex items-center justify-between pt-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+            <div>
+              <span className="block font-bold">Budget Velocity & Limit Warnings</span>
+              <span className="text-[11px] text-slate-400">Warn when category spend reaches 85%</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifSettings.budgetThresholdAlerts}
+              onChange={() => handleToggleReminder('budgetThresholdAlerts')}
+              className="rounded accent-brand-600"
+            />
+          </label>
+        </div>
+      </div>
+
       {/* 9. Data Actions & Sign Out */}
       <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Data Management</h3>
@@ -550,11 +650,22 @@ export const SettingsView: React.FC = () => {
           </button>
 
           <button
-            onClick={logout}
-            className="w-full p-3 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-2xl border border-rose-200/80 dark:border-rose-800 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center justify-between transition-colors"
+            onClick={handleDeleteAllData}
+            className="w-full p-3 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100/80 dark:hover:bg-rose-950/40 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center justify-between transition-colors"
           >
             <span className="flex items-center gap-2">
-              <LogOut className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <Trash className="w-4 h-4 text-rose-600" />
+              Delete All Data & Start Fresh
+            </span>
+            <span className="text-rose-500 font-normal">Reset</span>
+          </button>
+
+          <button
+            onClick={logout}
+            className="w-full p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <LogOut className="w-4 h-4 text-slate-600 dark:text-slate-400" />
               Sign Out
             </span>
             <span>Exit</span>
