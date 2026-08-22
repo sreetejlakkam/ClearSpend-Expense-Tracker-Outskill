@@ -185,14 +185,40 @@ CRITICAL INSTRUCTION:
   }
 }
 
-// 2. Call Free Browser Cloud LLM via Puter.js (GPT-4o-mini / Claude / Mistral - 100% Free & Zero Key Required)
+// Dynamic Puter.js script loader (Loaded ONLY on user consent and model selection)
+let puterScriptPromise: Promise<boolean> | null = null;
+export function loadPuterScript(): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if ((window as any).puter?.ai?.chat) return Promise.resolve(true);
+  if (puterScriptPromise) return puterScriptPromise;
+
+  puterScriptPromise = new Promise((resolve) => {
+    const existing = document.querySelector('script[src*="puter.com"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true));
+      existing.addEventListener('error', () => resolve(false));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+
+  return puterScriptPromise;
+}
+
+// 2. Call Free Browser Cloud LLM via Puter.js (GPT-4o-mini / Claude / Mistral - Free & Zero Key Required)
 export async function queryPuterAI(
   prompt: string,
   financialContext: string,
   language: 'en' | 'te' | 'hi' = 'en'
 ): Promise<string> {
-  if (typeof window === 'undefined' || !(window as any).puter?.ai?.chat) {
-    throw new Error('Free Browser Cloud AI is not initialized yet');
+  const loaded = await loadPuterScript();
+  if (!loaded || typeof window === 'undefined' || !(window as any).puter?.ai?.chat) {
+    throw new Error('Cloud AI script could not be loaded');
   }
 
   const langInstruction = language === 'te'
@@ -222,10 +248,10 @@ CRITICAL INSTRUCTION:
 
 export interface FinAIQueryResponse {
   text: string;
-  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Free AI Copilot';
+  modelUsed: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Free AI Copilot (Offline)' | 'Free AI Copilot';
 }
 
-// 3. Universal Multi-Tiered FinAI Query Orchestrator
+// 3. Universal Multi-Tiered FinAI Query Orchestrator with Consent Gate
 export async function queryFinAIChat(
   prompt: string,
   state: {
@@ -245,6 +271,16 @@ export async function queryFinAIChat(
   const language = options?.language || 'en';
   const apiKey = options?.apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('clearspend_gemini_key') || '';
   const preferredModel = options?.preferredModel || 'auto';
+  const hasCloudConsent = state.profile?.ai_consent === 'cloud';
+
+  // Strict Consent Check: If consent is not explicitly 'cloud', stay 100% offline
+  if (!hasCloudConsent) {
+    const localText = generateDeterministicFinAIResponse(prompt, state, language);
+    return {
+      text: localText,
+      modelUsed: 'Free AI Copilot (Offline)',
+    };
+  }
 
   const financialContext = buildFinancialContext(
     state.profile,
@@ -271,17 +307,15 @@ export async function queryFinAIChat(
   // Mode 2: Puter Free Cloud AI (Zero-config free LLM running in browser)
   if (preferredModel === 'puter' || preferredModel === 'auto') {
     try {
-      if (typeof window !== 'undefined' && (window as any).puter?.ai?.chat) {
-        const puterText = await queryPuterAI(prompt, financialContext, language);
-        if (puterText && puterText.trim().length > 10) {
-          return {
-            text: puterText,
-            modelUsed: 'Puter Free Cloud AI',
-          };
-        }
+      const puterText = await queryPuterAI(prompt, financialContext, language);
+      if (puterText && puterText.trim().length > 10) {
+        return {
+          text: puterText,
+          modelUsed: 'Puter Free Cloud AI',
+        };
       }
     } catch (err) {
-      console.warn('Puter free AI query failed, falling back to free AI engine:', err);
+      console.warn('Puter free AI query failed, falling back to local engine:', err);
     }
   }
 
@@ -289,7 +323,7 @@ export async function queryFinAIChat(
   const localText = generateDeterministicFinAIResponse(prompt, state, language);
   return {
     text: localText,
-    modelUsed: 'Free AI Copilot',
+    modelUsed: 'Free AI Copilot (Offline)',
   };
 }
 

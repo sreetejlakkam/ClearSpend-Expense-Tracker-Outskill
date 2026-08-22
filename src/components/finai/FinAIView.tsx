@@ -41,6 +41,7 @@ export const FinAIView: React.FC = () => {
     transactions,
     budgets,
     selectedMonthStr,
+    updateProfile,
     addToast
   } = useStore();
 
@@ -50,6 +51,45 @@ export const FinAIView: React.FC = () => {
   const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter'>('auto');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [pendingModelSwitch, setPendingModelSwitch] = useState<'auto' | 'gemini' | 'puter' | null>(null);
+
+  const isCloudConsentGranted = profile?.ai_consent === 'cloud';
+
+  const handleModelChange = (newModel: 'auto' | 'gemini' | 'puter') => {
+    if (newModel !== 'auto' && !isCloudConsentGranted) {
+      setPendingModelSwitch(newModel);
+      setShowConsentModal(true);
+      return;
+    }
+    setPreferredModel(newModel);
+  };
+
+  const handleGrantConsent = async () => {
+    await updateProfile({ ai_consent: 'cloud' });
+    if (pendingModelSwitch) {
+      setPreferredModel(pendingModelSwitch);
+      setPendingModelSwitch(null);
+    }
+    setShowConsentModal(false);
+    addToast({
+      title: 'Cloud AI Enabled',
+      message: 'Cloud reasoning enabled with privacy-first anonymisation.',
+      type: 'success',
+    });
+  };
+
+  const handleStayOffline = async () => {
+    await updateProfile({ ai_consent: 'none' });
+    setPreferredModel('auto');
+    setPendingModelSwitch(null);
+    setShowConsentModal(false);
+    addToast({
+      title: 'Offline Mode Active',
+      message: 'FinAI will run 100% locally on your device.',
+      type: 'info',
+    });
+  };
 
   const currSym = profile?.base_currency === 'INR' ? '₹' : (profile?.base_currency || '₹');
 
@@ -280,10 +320,10 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap">
           <select
             value={preferredModel}
-            onChange={(e) => setPreferredModel(e.target.value as any)}
+            onChange={(e) => handleModelChange(e.target.value as any)}
             className="text-[11px] font-bold px-2.5 py-1.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-slate-100 focus:outline-hidden cursor-pointer"
           >
-            <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Best Free LLM)</option>
+            <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Offline Engine)</option>
             <option value="gemini" className="bg-slate-900 text-white">🤖 Gemini 2.5 Flash</option>
             <option value="puter" className="bg-slate-900 text-white">✨ Free Cloud AI (Puter)</option>
           </select>
@@ -529,6 +569,68 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cloud AI Privacy & Data Consent Modal */}
+      {showConsentModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 flex items-center justify-center">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Cloud AI Data Consent</h3>
+              </div>
+              <button
+                onClick={() => setShowConsentModal(false)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed space-y-3">
+              <p>
+                To provide generative reasoning with <strong>Google Gemini</strong> or <strong>Puter Cloud AI</strong>, FinAI securely sends minimal financial context to process your questions.
+              </p>
+              
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-start gap-2">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓</span>
+                  <div>
+                    <strong className="text-slate-900 dark:text-white block">What leaves your device:</strong>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Anonymised transaction amounts and category names for your active month query.</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-rose-500 font-bold">✗</span>
+                  <div>
+                    <strong className="text-slate-900 dark:text-white block">What NEVER leaves your device:</strong>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Your name, email, credentials, bank accounts, wallet IDs, or raw note text.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleStayOffline}
+                className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Stay 100% Offline
+              </button>
+              <button
+                type="button"
+                onClick={handleGrantConsent}
+                className="px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-extrabold shadow-sm transition-all"
+              >
+                Allow Cloud AI
+              </button>
+            </div>
           </div>
         </div>
       )}

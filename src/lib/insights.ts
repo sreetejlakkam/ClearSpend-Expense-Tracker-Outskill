@@ -57,46 +57,87 @@ export function calculateMerchantSimilarity(s1: string, s2: string): number {
   return Math.max(tokenSim, levSim);
 }
 
-// 1. Duplicate Scanner
+// 1. Scalable Multi-Tiered Duplicate Scanner (Bucketed O(N) / O(K) comparisons)
 export function scanDuplicates(transactions: Transaction[], windowDays: number = 60): DuplicatePair[] {
-  const activeTxns = transactions.filter((t) => t.status === 'active');
-  const sorted = [...activeTxns].sort(
-    (a, b) => new Date(a.txn_date).getTime() - new Date(b.txn_date).getTime()
-  );
+  if (!transactions || transactions.length === 0 || transactions.length > 20000) {
+    return [];
+  }
 
+  const activeTxns = transactions.filter((t) => t.status === 'active');
   const duplicatePairs: DuplicatePair[] = [];
   const visitedPairs = new Set<string>();
 
-  for (let i = 0; i < sorted.length; i++) {
-    for (let j = i + 1; j < sorted.length; j++) {
-      const itemA = sorted[i]; // older
-      const itemB = sorted[j]; // newer
-
-      const key = `${itemA.id}_${itemB.id}`;
-      if (visitedPairs.has(key)) continue;
-
-      const dateA = new Date(itemA.txn_date).getTime();
-      const dateB = new Date(itemB.txn_date).getTime();
-      const diffDays = Math.abs(dateB - dateA) / (1000 * 60 * 60 * 24);
-
-      if (diffDays > windowDays) continue;
-
-      // Fingerprint match
-      if (itemA.fingerprint && itemB.fingerprint && itemA.fingerprint === itemB.fingerprint) {
-        visitedPairs.add(key);
-        duplicatePairs.push({
-          id: `dup_${itemA.id}_${itemB.id}`,
-          original: itemA,
-          duplicate: itemB,
-          reason: 'Identical transaction fingerprint',
-          similarity: 1.0,
-        });
-        continue;
+  // 1. Fast O(N) Fingerprint Match Map
+  const fpMap = new Map<string, Transaction[]>();
+  for (const t of activeTxns) {
+    if (t.fingerprint) {
+      if (!fpMap.has(t.fingerprint)) {
+        fpMap.set(t.fingerprint, []);
       }
+      fpMap.get(t.fingerprint)!.push(t);
+    }
+  }
 
-      // Amount match + kind match + date within 2 days + merchant similarity >= 0.75
-      if (Number(itemA.amount) === Number(itemB.amount) && itemA.kind === itemB.kind) {
-        if (diffDays <= 2) {
+  for (const [, group] of fpMap.entries()) {
+    if (group.length > 1) {
+      // Sort older first
+      group.sort((a, b) => new Date(a.created_at || a.txn_date).getTime() - new Date(b.created_at || b.txn_date).getTime());
+      for (let i = 0; i < group.length - 1; i++) {
+        const itemA = group[i];
+        const itemB = group[i + 1];
+        const key = `${itemA.id}_${itemB.id}`;
+        if (!visitedPairs.has(key)) {
+          visitedPairs.add(key);
+          duplicatePairs.push({
+            id: `dup_${itemA.id}_${itemB.id}`,
+            original: itemA,
+            duplicate: itemB,
+            tier: 'exact',
+            reason: 'Identical transaction fingerprint',
+            similarity: 1.0,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Bucketed Amount + Kind Comparison for Fuzzy & Rapid-Tap Matches
+  const bucketMap = new Map<string, Transaction[]>();
+  for (const t of activeTxns) {
+    const bucketKey = `${t.amount}_${t.kind}`;
+    if (!bucketMap.has(bucketKey)) {
+      bucketMap.set(bucketKey, []);
+    }
+    bucketMap.get(bucketKey)!.push(t);
+  }
+
+  for (const [, bucket] of bucketMap.entries()) {
+    if (bucket.length <= 1) continue;
+
+    // Sort by created_at or txn_date ascending
+    bucket.sort(
+      (a, b) => new Date(a.created_at || a.txn_date).getTime() - new Date(b.created_at || b.txn_date).getTime()
+    );
+
+    for (let i = 0; i < bucket.length; i++) {
+      for (let j = i + 1; j < bucket.length; j++) {
+        const itemA = bucket[i]; // older
+        const itemB = bucket[j]; // newer
+
+        const key = `${itemA.id}_${itemB.id}`;
+        if (visitedPairs.has(key)) continue;
+
+        const timeA = new Date(itemA.created_at || itemA.txn_date).getTime();
+        const timeB = new Date(itemB.created_at || itemB.txn_date).getTime();
+        const diffMs = Math.abs(timeB - timeA);
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+        if (diffDays > windowDays) continue;
+
+        // Rapid tap check (created within 120 seconds)
+        const isRapidTap = itemA.created_at && itemB.created_at && diffMs <= 120 * 1000;
+
+        if (isRapidTap || diffDays <= 2) {
           const sim = calculateMerchantSimilarity(itemA.merchant, itemB.merchant);
           if (sim >= 0.75) {
             visitedPairs.add(key);
@@ -104,7 +145,10 @@ export function scanDuplicates(transactions: Transaction[], windowDays: number =
               id: `dup_${itemA.id}_${itemB.id}`,
               original: itemA,
               duplicate: itemB,
-              reason: `Same amount (${itemA.amount}) and merchant within ${Math.round(diffDays)} day(s)`,
+              tier: isRapidTap ? 'rapid_tap' : 'probable',
+              reason: isRapidTap
+                ? `Rapid tap duplicate within ${Math.round(diffMs / 1000)}s`
+                : `Same amount (${itemA.amount}) & merchant within ${Math.max(1, Math.round(diffDays))} day(s)`,
               similarity: sim,
             });
           }

@@ -72,12 +72,29 @@ export const ReviewInboxView: React.FC = () => {
                     className="p-4 bg-white rounded-3xl border-2 border-amber-300 shadow-card space-y-3"
                   >
                     {/* Reason header */}
-                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-100">
-                      <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                        {pair.reason}
-                      </span>
-                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-zinc-100 text-zinc-600">
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          {pair.reason}
+                        </span>
+                        {pair.tier === 'rapid_tap' && (
+                          <span className="text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                            ⚡ Rapid Tap (&lt;120s)
+                          </span>
+                        )}
+                        {pair.tier === 'exact' && (
+                          <span className="text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            🔒 Exact Match
+                          </span>
+                        )}
+                        {pair.tier === 'probable' && (
+                          <span className="text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            ⚠️ Probable
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-300">
                         {Math.round(pair.similarity * 100)}% match
                       </span>
                     </div>

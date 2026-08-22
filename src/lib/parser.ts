@@ -169,24 +169,31 @@ const KEYWORD_MAP: Record<string, { category: string; confidence: number; mercha
   dividend: { category: 'Other Income', confidence: 0.95, merchant: 'Dividend' },
 };
 
+export type ParseOutcome =
+  | { ok: true; result: ParsedTransactionResult }
+  | { ok: false; reason: 'no_amount' | 'empty'; rawText: string };
+
 // Main parsing function with Rule Cache + Edge Function + Deterministic Fallback
 export async function parseTransactionInput(
-  rawText: string,
+  text: string,
   categories: Category[],
   wallets: Wallet[],
-  rules: CategoryRule[] = [],
+  rules: CategoryRule[],
   currency: string = 'INR'
-): Promise<ParsedTransactionResult> {
-  const trimmed = rawText.trim();
+): Promise<ParseOutcome> {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { ok: false, reason: 'empty', rawText: text };
+  }
+
   const lower = trimmed.toLowerCase();
 
-  // 1. Try Calling Supabase Edge Function if configured
+  // 1. Try Supabase Edge Function if connected
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.functions.invoke('parse-transaction', {
         body: {
           text: trimmed,
-          today: new Date().toISOString().split('T')[0],
           currency,
           categories: categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind })),
           wallets: wallets.map((w) => ({ id: w.id, name: w.name })),
@@ -194,17 +201,20 @@ export async function parseTransactionInput(
         },
       });
 
-      if (!error && data && data.amount > 0) {
+      if (!error && data && Number(data.amount) > 0) {
         return {
-          amount: Number(data.amount),
-          kind: data.kind || 'expense',
-          merchant: data.merchant || 'Expense',
-          category_id: data.category_id || categories[0]?.id || '',
-          category_confidence: Number(data.category_confidence) || 0.8,
-          txn_date: data.txn_date || new Date().toISOString().split('T')[0],
-          wallet_id: data.wallet_id || wallets[0]?.id,
-          note: data.note || trimmed,
-          degraded: data.degraded || false,
+          ok: true,
+          result: {
+            amount: Number(data.amount),
+            kind: data.kind || 'expense',
+            merchant: data.merchant || 'Expense',
+            category_id: data.category_id || categories[0]?.id || '',
+            category_confidence: Number(data.category_confidence) || 0.8,
+            txn_date: data.txn_date || new Date().toISOString().split('T')[0],
+            wallet_id: data.wallet_id || wallets[0]?.id,
+            note: data.note || trimmed,
+            degraded: data.degraded || false,
+          },
         };
       }
     } catch (edgeErr) {
@@ -213,7 +223,16 @@ export async function parseTransactionInput(
   }
 
   // 2. High-Fidelity Client Parsing Engine
-  const amount = extractAmount(trimmed) || 100;
+  const extractedAmount = extractAmount(trimmed);
+  if (extractedAmount === null || extractedAmount <= 0) {
+    return {
+      ok: false,
+      reason: 'no_amount',
+      rawText: trimmed,
+    };
+  }
+
+  const amount = extractedAmount;
   const txn_date = resolveRelativeDate(trimmed);
 
   // Determine kind: income vs expense
@@ -293,15 +312,18 @@ export async function parseTransactionInput(
   }
 
   return {
-    amount,
-    kind,
-    merchant: detectedMerchant,
-    category_id: matchedCategoryId || '',
-    category_confidence: confidence,
-    txn_date,
-    wallet_id: matchedWalletId,
-    note: trimmed,
-    degraded: confidence < 0.5,
+    ok: true,
+    result: {
+      amount,
+      kind,
+      merchant: detectedMerchant,
+      category_id: matchedCategoryId || '',
+      category_confidence: confidence,
+      txn_date,
+      wallet_id: matchedWalletId,
+      note: trimmed,
+      degraded: confidence < 0.5,
+    },
   };
 }
 

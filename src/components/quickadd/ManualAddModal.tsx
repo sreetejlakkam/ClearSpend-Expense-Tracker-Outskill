@@ -10,6 +10,7 @@ export const ManualAddModal: React.FC = () => {
     setIsManualModalOpen,
     editingTransaction,
     setEditingTransaction,
+    manualModalPrefill,
     categories,
     wallets,
     addTransaction,
@@ -29,7 +30,7 @@ export const ManualAddModal: React.FC = () => {
   const [note, setNote] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Populate form on edit
+  // Populate form on edit or prefill
   useEffect(() => {
     if (editingTransaction) {
       setAmount(editingTransaction.amount.toString());
@@ -39,6 +40,15 @@ export const ManualAddModal: React.FC = () => {
       setTxnDate(editingTransaction.txn_date);
       setMerchant(editingTransaction.merchant);
       setNote(editingTransaction.note || '');
+    } else if (manualModalPrefill) {
+      setAmount(manualModalPrefill.amount || '');
+      setKind('expense');
+      const defaultExpCat = categories.find((c) => c.kind === 'expense');
+      setCategoryId(defaultExpCat ? defaultExpCat.id : categories[0]?.id || '');
+      setWalletId(wallets[0]?.id || '');
+      setTxnDate(new Date().toISOString().split('T')[0]);
+      setMerchant(manualModalPrefill.merchant || '');
+      setNote(manualModalPrefill.note || '');
     } else {
       setAmount('');
       setKind('expense');
@@ -49,7 +59,7 @@ export const ManualAddModal: React.FC = () => {
       setMerchant('');
       setNote('');
     }
-  }, [editingTransaction, isManualModalOpen, categories, wallets]);
+  }, [editingTransaction, manualModalPrefill, isManualModalOpen, categories, wallets]);
 
   const handleClose = () => {
     setIsManualModalOpen(false);
@@ -114,6 +124,12 @@ export const ManualAddModal: React.FC = () => {
       subtitle={isEditing ? 'Update transaction details' : 'Enter amount and allocate to category'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {manualModalPrefill?.hint && !isEditing && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-2xl text-xs font-bold text-amber-800 dark:text-amber-300">
+            {manualModalPrefill.hint}
+          </div>
+        )}
+
         {/* Kind Toggle (Expense vs Income) */}
         <div className="grid grid-cols-2 gap-2 bg-zinc-100 p-1 rounded-2xl border border-zinc-200">
           <button

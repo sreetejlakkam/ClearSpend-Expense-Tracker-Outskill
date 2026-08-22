@@ -6,14 +6,13 @@ import {
   CategoryRule,
   DuplicatePair,
   Insight,
-  ParsedTransactionResult,
   Profile,
   Transaction,
   Wallet,
 } from '../types';
 import { generateAIInsights, scanAnomalies, scanDuplicates } from './insights';
-import { generateFingerprint, parseTransactionInput } from './parser';
-import { getInitialDemoState } from './storage';
+import { generateFingerprint, parseTransactionInput, ParseOutcome } from './parser';
+import { DEFAULT_CATEGORIES, getInitialDemoState } from './storage';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 interface ToastMessage {
@@ -26,17 +25,26 @@ interface ToastMessage {
   duration?: number;
 }
 
+export interface ManualPrefill {
+  amount?: string;
+  merchant?: string;
+  note?: string;
+  hint?: string;
+}
+
 interface StoreContextType {
   // Auth & Profile
   profile: Profile | null;
   isAuthenticated: boolean;
   isOnboarded: boolean;
-  login: (email: string, name?: string) => Promise<void>;
+  isDemoSession: boolean;
+  login: (email: string, password?: string, name?: string) => Promise<void>;
   loginAsDemo: () => void;
-  signup: (email: string, name: string) => Promise<void>;
+  signup: (email: string, name: string, password?: string) => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   completeOnboarding: (currency: string, walletName: string, budgetCategory?: string, budgetAmount?: number) => Promise<void>;
+  clearAllUserData: () => void;
 
   // Navigation & Date
   activeTab: string;
@@ -89,13 +97,15 @@ interface StoreContextType {
   getCategory3MonthAverage: (categoryId: string) => number;
 
   // AI & Parsing
-  parseNaturalLanguage: (text: string) => Promise<ParsedTransactionResult>;
+  parseNaturalLanguage: (text: string) => Promise<ParseOutcome>;
   refreshInsights: () => Promise<void>;
   dismissInsight: (id: string) => void;
 
   // UI Modals & State
   isManualModalOpen: boolean;
   setIsManualModalOpen: (open: boolean) => void;
+  manualModalPrefill: ManualPrefill | null;
+  openManualAdd: (prefill?: ManualPrefill) => void;
   editingTransaction: Transaction | null;
   setEditingTransaction: (txn: Transaction | null) => void;
   activeCategoryFilter: string | null;
@@ -120,59 +130,71 @@ const STORAGE_KEYS = {
   BUDGETS: 'clearspend_budgets_v1',
   RULES: 'clearspend_rules_v1',
   INSIGHTS: 'clearspend_insights_v1',
+  IS_DEMO: 'clearspend_is_demo_v1',
 };
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load initial state
+  // Demo session state
+  const [isDemoSession, setIsDemoSession] = useState<boolean>(() => {
+    const isDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO);
+    // If not set at all, check if we have a saved profile
+    if (isDemo === null) {
+      const hasProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      return !hasProfile; // If no profile, start clean until user signs in or picks demo
+    }
+    return isDemo === 'true';
+  });
+
   const demoData = useMemo(() => getInitialDemoState('demo_user_1'), []);
 
   const [profile, setProfile] = useState<Profile | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    return saved ? JSON.parse(saved) : demoData.profile;
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? demoData.profile : null;
   });
 
   const [wallets, setWallets] = useState<Wallet[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.WALLETS);
-    return saved ? JSON.parse(saved) : demoData.wallets;
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? demoData.wallets : [];
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    return saved ? JSON.parse(saved) : demoData.categories;
+    if (saved) return JSON.parse(saved);
+    return isDemoSession
+      ? demoData.categories
+      : DEFAULT_CATEGORIES.map((c) => ({ ...c, user_id: 'default' }));
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    if (saved) {
-      const parsed: Transaction[] = JSON.parse(saved);
-      // Auto-migrate if older single-month dataset is in storage
-      if (parsed.length < 50 && demoData.transactions.length >= 50) {
-        return demoData.transactions;
-      }
-      return parsed;
-    }
-    return demoData.transactions;
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? demoData.transactions : [];
   });
 
   const [budgets, setBudgets] = useState<Budget[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.BUDGETS);
-    return saved ? JSON.parse(saved) : demoData.budgets;
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? demoData.budgets : [];
   });
 
   const [categoryRules, setCategoryRules] = useState<CategoryRule[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.RULES);
-    return saved ? JSON.parse(saved) : demoData.rules;
+    if (saved) return JSON.parse(saved);
+    return isDemoSession ? demoData.rules : [];
   });
 
   const [insights, setInsights] = useState<Insight[]>([]);
 
-  // Navigation & Selected month (August 2026 as per local context)
+  // Navigation & Real Current Date (Unfrozen from hardcoded date!)
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(2026, 7, 20)); // August 2026
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
 
   // Modals & Sheets
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [manualModalPrefill, setManualModalPrefill] = useState<ManualPrefill | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [dismissedAnomalyIds, setDismissedAnomalyIds] = useState<Set<string>>(new Set());
 
@@ -197,7 +219,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Sync to local storage on changes
   useEffect(() => {
-    if (profile) localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    if (profile) {
+      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.PROFILE);
+    }
   }, [profile]);
 
   useEffect(() => {
@@ -219,6 +245,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.RULES, JSON.stringify(categoryRules));
   }, [categoryRules]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.IS_DEMO, String(isDemoSession));
+  }, [isDemoSession]);
 
   // Selected Month formatted "YYYY-MM"
   const selectedMonthStr = useMemo(() => {
@@ -271,13 +301,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [profile?.id, selectedMonthStr]);
 
+  // Clear all user data for fresh signup or reset
+  const clearAllUserData = () => {
+    setTransactions([]);
+    setBudgets([]);
+    setCategoryRules([]);
+    setInsights([]);
+    setWallets([]);
+    setCategories(DEFAULT_CATEGORIES.map((c) => ({ ...c, user_id: 'default' })));
+    localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
+    localStorage.removeItem(STORAGE_KEYS.BUDGETS);
+    localStorage.removeItem(STORAGE_KEYS.RULES);
+    localStorage.removeItem(STORAGE_KEYS.INSIGHTS);
+    localStorage.removeItem(STORAGE_KEYS.WALLETS);
+    localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+  };
+
   // Auth Functions
-  const login = async (email: string, name?: string) => {
+  const login = async (email: string, password?: string, name?: string) => {
+    setIsDemoSession(false);
+    localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'false');
+
     if (isSupabaseConfigured && supabase) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password: 'password123',
+          password: password || 'password123',
         });
         if (!error && data.user) {
           const newProf: Profile = {
@@ -285,6 +334,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             email: data.user.email || email,
             display_name: name || data.user.user_metadata?.display_name || email.split('@')[0],
             base_currency: 'INR',
+            ai_consent: 'none',
             onboarded_at: new Date().toISOString(),
             created_at: new Date().toISOString(),
           };
@@ -292,17 +342,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           addToast({ title: 'Welcome back!', message: `Logged in as ${newProf.display_name}`, type: 'success' });
           return;
         }
-      } catch (err) {
-        console.warn('Supabase login failed, using local auth mode:', err);
+        if (error) {
+          throw error;
+        }
+      } catch (err: any) {
+        if (!isSupabaseConfigured) {
+          console.warn('Supabase login failed, using local auth mode:', err);
+        } else {
+          throw err;
+        }
       }
     }
 
-    // Local Auth fallback
+    // Local Auth mode
     const newProf: Profile = {
       id: `user_${Date.now()}`,
       email,
       display_name: name || email.split('@')[0],
       base_currency: 'INR',
+      ai_consent: 'none',
       onboarded_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
     };
@@ -311,6 +369,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const loginAsDemo = () => {
+    setIsDemoSession(true);
+    localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'true');
     const demo = getInitialDemoState('demo_user_1');
     setProfile(demo.profile);
     setWallets(demo.wallets);
@@ -321,13 +381,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addToast({ title: 'Demo Mode Active', message: 'Logged in with 40+ seeded transactions & budget data', type: 'info' });
   };
 
-  const signup = async (email: string, name: string) => {
+  const signup = async (email: string, name: string, password?: string) => {
+    setIsDemoSession(false);
+    localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'false');
+    clearAllUserData();
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: password || 'password123',
+          options: {
+            data: { display_name: name },
+          },
+        });
+        if (error) throw error;
+        const newProf: Profile = {
+          id: data.user?.id || `user_${Date.now()}`,
+          email,
+          display_name: name,
+          base_currency: 'INR',
+          ai_consent: 'none',
+          onboarded_at: null, // Gate to Onboarding
+          created_at: new Date().toISOString(),
+        };
+        setProfile(newProf);
+        return;
+      } catch (err: any) {
+        if (!isSupabaseConfigured) {
+          console.warn('Supabase signup fallback:', err);
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    // Local signup
     const newProf: Profile = {
       id: `user_${Date.now()}`,
       email,
       display_name: name,
       base_currency: 'INR',
-      onboarded_at: null, // Needs onboarding
+      ai_consent: 'none',
+      onboarded_at: null, // Gate to Onboarding
       created_at: new Date().toISOString(),
     };
     setProfile(newProf);
@@ -335,6 +431,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const logout = () => {
     setProfile(null);
+    setIsDemoSession(false);
+    localStorage.removeItem(STORAGE_KEYS.IS_DEMO);
     if (isSupabaseConfigured && supabase) {
       supabase.auth.signOut();
     }
@@ -350,6 +448,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const completeOnboarding = async (currency: string, walletName: string, budgetCategory?: string, budgetAmount?: number) => {
     if (!profile) return;
+
+    // Ensure real user has zero demo transactions
+    if (!isDemoSession) {
+      setTransactions([]);
+      setBudgets([]);
+    }
+
     const updatedProf: Profile = {
       ...profile,
       base_currency: currency,
@@ -357,11 +462,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     setProfile(updatedProf);
 
-    // Create wallet
+    // Create primary wallet
     const newWallet: Wallet = {
       id: `wallet_${Date.now()}`,
       user_id: profile.id,
-      name: walletName || 'Main Wallet',
+      name: walletName || 'Main Account',
       type: 'bank',
       currency,
       opening_balance: 0,
@@ -382,10 +487,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         alert_threshold: 80,
         created_at: new Date().toISOString(),
       };
-      setBudgets((prev) => [...prev, newBudget]);
+      setBudgets([newBudget]);
     }
 
     addToast({ title: 'Setup Complete!', message: 'Welcome to ClearSpend. Start logging in one line.', type: 'success' });
+  };
+
+  // Open manual add modal with pre-filled fields & optional hint
+  const openManualAdd = (prefill?: ManualPrefill) => {
+    setEditingTransaction(null);
+    setManualModalPrefill(prefill || null);
+    setIsManualModalOpen(true);
   };
 
   // Add Transaction
@@ -418,11 +530,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     if (existingDuplicates.length > 0) {
-      // Flag potential duplicate
       newTxn.duplicate_of_id = existingDuplicates[0].id;
       addToast({
         title: 'Possible Duplicate Detected',
-        message: `This matches an existing ${profile.base_currency} ${newTxn.amount} transaction. Review in Inbox.`,
+        message: `Matches an existing ${profile.base_currency} ${newTxn.amount} transaction. Review in Inbox.`,
         type: 'warning',
         actionLabel: 'Review',
         onAction: () => setActiveTab('review'),
@@ -620,7 +731,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Parsing Natural Language
-  const parseNaturalLanguage = async (text: string): Promise<ParsedTransactionResult> => {
+  const parseNaturalLanguage = async (text: string): Promise<ParseOutcome> => {
     return parseTransactionInput(text, categories, wallets, categoryRules, profile?.base_currency || 'INR');
   };
 
@@ -630,13 +741,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Reset to full demo state
   const resetToDemoData = () => {
+    setIsDemoSession(true);
+    localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'true');
     const demo = getInitialDemoState(profile?.id || 'demo_user_1');
     setWallets(demo.wallets);
     setCategories(demo.categories);
     setTransactions(demo.transactions);
     setBudgets(demo.budgets);
     setCategoryRules(demo.rules);
-    addToast({ title: 'Ledger Reset', message: 'Restored realistic 5-month demo transactions (Apr-Aug 2026).', type: 'success' });
+    addToast({ title: 'Ledger Reset', message: 'Restored realistic multi-month demo transactions.', type: 'success' });
   };
 
   return (
@@ -645,12 +758,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         profile,
         isAuthenticated: Boolean(profile),
         isOnboarded: Boolean(profile?.onboarded_at),
+        isDemoSession,
         login,
         loginAsDemo,
         signup,
         logout,
         updateProfile,
         completeOnboarding,
+        clearAllUserData,
         activeTab,
         setActiveTab,
         selectedDate,
@@ -690,6 +805,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         dismissInsight,
         isManualModalOpen,
         setIsManualModalOpen,
+        manualModalPrefill,
+        openManualAdd,
         editingTransaction,
         setEditingTransaction,
         activeCategoryFilter,

@@ -11,6 +11,9 @@ export interface Profile {
   email: string;
   display_name: string;
   base_currency: string;
+  ai_consent?: 'none' | 'cloud';
+  locale?: string;
+  theme?: string;
   onboarded_at: string | null;
   created_at: string;
 }
@@ -109,6 +112,7 @@ export interface DuplicatePair {
   original: Transaction;
   duplicate: Transaction;
   reason: string;
+  tier?: 'exact' | 'rapid_tap' | 'probable';
   similarity: number;
 }
 

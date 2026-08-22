@@ -84,7 +84,7 @@ Confirming creates a persistent regex rule that automatically updates all future
 
 ### 3. Review Inbox (Duplicate & Anomaly Defense)
 ClearSpend acts as an automated financial auditor with two proactive scanners:
-1. **Duplicate Detection:** Scans for identical amounts and merchants logged within a 60-second window (e.g. accidental double UPI taps). One click allows merging or keeping both.
+1. **Multi-Tiered Duplicate Detection:** Identifies exact cryptographic fingerprint matches, rapid double-tap swipes (<120 seconds between records), and probable duplicates within 2 days with high merchant similarity. One click allows merging or keeping both.
 2. **Anomaly Detection:** Flags any expenditure that exceeds **3x the category median** (e.g., a celebratory ₹7,800 dinner when the normal dining median is ₹450), highlighting unusual spikes for user review.
 
 ---

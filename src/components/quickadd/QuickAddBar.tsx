@@ -13,6 +13,7 @@ export const QuickAddBar: React.FC = () => {
     learnCategoryRule,
     transactions,
     profile,
+    openManualAdd,
     setIsManualModalOpen,
     addToast,
   } = useStore();
@@ -27,13 +28,25 @@ export const QuickAddBar: React.FC = () => {
 
   const handleParse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim() || isParsing) return;
+    const raw = inputVal.trim();
+    if (!raw || isParsing) return;
 
     setIsParsing(true);
     try {
-      const result = await parseNaturalLanguage(inputVal.trim());
-      setParsedCard(result);
-      setInitialSuggestedCatId(result.category_id);
+      const outcome = await parseNaturalLanguage(raw);
+      if (outcome.ok) {
+        setParsedCard(outcome.result);
+        setInitialSuggestedCatId(outcome.result.category_id);
+      } else {
+        // No amount found or empty: Open manual add modal with raw text as note and amount focused
+        setInputVal('');
+        openManualAdd({
+          merchant: outcome.rawText,
+          note: outcome.rawText,
+          amount: '',
+          hint: "Couldn't find an amount in that — what was it?",
+        });
+      }
     } catch (err) {
       console.error('Error parsing transaction:', err);
     } finally {

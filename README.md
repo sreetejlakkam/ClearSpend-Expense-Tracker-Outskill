@@ -44,7 +44,7 @@ ClearSpend is a modern, privacy-first personal expense tracker and AI financial 
 - **⭐ Power of Compounding Visualizer:**
   - Interactive SIP compounding calculator comparing Fixed Deposits (6.5%), Nifty 50 Index Funds (12%), and Diversified Equity (15%).
 - **⭐ Review Inbox (Trust Guard):**
-  - Flags duplicate transaction pairs within 60-second windows.
+  - Flags duplicate transaction pairs: exact fingerprint matches, rapid double-tap swipes (<120 seconds), and probable duplicates within 2 days.
   - Flags statistical spending anomalies (>3x category median).
 - **⭐ Multi-Language & Theme System:**
   - Full localization for **English**, **తెలుగు (Telugu)**, and **हिन्दी (Hindi)**.
