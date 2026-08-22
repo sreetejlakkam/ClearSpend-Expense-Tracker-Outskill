@@ -45,6 +45,7 @@ export interface ManualPrefill {
   merchant?: string;
   note?: string;
   hint?: string;
+  date?: string;
 }
 
 function mapSupabaseAuthError(msg: string): string {

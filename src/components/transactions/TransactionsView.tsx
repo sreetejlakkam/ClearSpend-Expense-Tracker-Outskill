@@ -4,9 +4,11 @@ import { useTranslation } from '../../lib/i18n';
 import { formatIndianCurrency } from '../../lib/compounding';
 import { exportTransactionsToCSV } from '../../lib/csv';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { CsvImportModal } from '../import/CsvImportModal';
 import {
   Search,
   Download,
+  Upload,
   Plus,
   Trash2,
   Tag,
@@ -45,6 +47,7 @@ export const TransactionsView: React.FC = () => {
   const [selectedTxnIds, setSelectedTxnIds] = useState<string[]>([]);
   const [bulkCatModalOpen, setBulkCatModalOpen] = useState(false);
   const [targetBulkCatId, setTargetBulkCatId] = useState<string>(categories[0]?.id || '');
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
 
   const currSym = profile?.base_currency === 'INR' ? '₹' : (profile?.base_currency || '₹');
 
@@ -156,6 +159,15 @@ export const TransactionsView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCsvImportOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs transition-all"
+            title="Import Bank Statement CSV"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Import CSV</span>
+          </button>
+
           <button
             onClick={() => exportTransactionsToCSV(transactions, categories, wallets, profile?.base_currency || 'INR')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-xs transition-all"
@@ -521,6 +533,12 @@ export const TransactionsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Bank Statement CSV Import Modal */}
+      <CsvImportModal
+        isOpen={isCsvImportOpen}
+        onClose={() => setIsCsvImportOpen(false)}
+      />
     </div>
   );
 };

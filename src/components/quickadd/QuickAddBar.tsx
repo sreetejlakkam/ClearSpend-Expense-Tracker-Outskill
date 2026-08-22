@@ -3,6 +3,9 @@ import { Sparkles, ArrowRight, Check, SlidersHorizontal, Loader2, X } from 'luci
 import { useStore } from '../../lib/store';
 import { ParsedTransactionResult } from '../../types';
 import confetti from 'canvas-confetti';
+import { VoiceInputButton } from './VoiceInputButton';
+import { ReceiptUploadButton } from './ReceiptUploadButton';
+import { parseBankSMS } from '../../lib/smsParser';
 
 export const QuickAddBar: React.FC = () => {
   const {
@@ -21,8 +24,8 @@ export const QuickAddBar: React.FC = () => {
   const [inputVal, setInputVal] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [parsedCard, setParsedCard] = useState<ParsedTransactionResult | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [initialSuggestedCatId, setInitialSuggestedCatId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +36,30 @@ export const QuickAddBar: React.FC = () => {
 
     setIsParsing(true);
     try {
+      // 1. Try Indian Bank SMS Parsing first
+      const sms = parseBankSMS(raw);
+      if (sms.isTransaction && sms.amount && sms.amount > 0) {
+        const matchingCat = categories.find((c) => c.kind === sms.kind) || categories[0];
+        const matchingWallet = sms.account_suffix
+          ? wallets.find((w) => w.name.includes(sms.account_suffix!)) || wallets[0]
+          : wallets[0];
+
+        setParsedCard({
+          amount: sms.amount,
+          kind: sms.kind || 'expense',
+          merchant: sms.merchant || 'Bank Transaction',
+          category_id: matchingCat?.id || '',
+          category_confidence: 0.95,
+          txn_date: sms.txn_date || new Date().toISOString().split('T')[0],
+          wallet_id: matchingWallet?.id || '',
+          note: `Bank SMS: ${sms.bank_name || 'Account'} (${sms.account_suffix || ''})`,
+        });
+        setInitialSuggestedCatId(matchingCat?.id || '');
+        setIsParsing(false);
+        return;
+      }
+
+      // 2. Standard Natural Language Parser
       const outcome = await parseNaturalLanguage(raw);
       if (outcome.ok) {
         setParsedCard(outcome.result);
@@ -134,6 +161,58 @@ export const QuickAddBar: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleVoiceTranscript = async (transcript: string) => {
+    setInputVal(transcript);
+    const outcome = await parseNaturalLanguage(transcript);
+    if (!outcome.ok) {
+      openManualAdd({
+        note: outcome.rawText,
+        merchant: outcome.rawText,
+        amount: '',
+        hint: "Couldn't find an amount in voice speech — what was it?",
+      });
+      return;
+    }
+    const result = outcome.result;
+    setInitialSuggestedCatId(result.category_id);
+    setParsedCard(result);
+  };
+
+  const handleReceiptParsed = (receipt: {
+    merchant: string;
+    amount: number;
+    txn_date: string;
+    category_hint?: string;
+    note?: string;
+  }) => {
+    if (receipt.amount <= 0) {
+      openManualAdd({
+        merchant: receipt.merchant,
+        note: receipt.note,
+        date: receipt.txn_date,
+        amount: '',
+      });
+      return;
+    }
+
+    const matchingCat = receipt.category_hint
+      ? categories.find((c) => c.name.toLowerCase().includes(receipt.category_hint!.toLowerCase()))
+      : undefined;
+
+    const catId = matchingCat?.id || categories.find((c) => c.kind === 'expense')?.id || categories[0]?.id || '';
+
+    setParsedCard({
+      amount: receipt.amount,
+      kind: 'expense',
+      merchant: receipt.merchant,
+      category_id: catId,
+      category_confidence: 0.9,
+      txn_date: receipt.txn_date,
+      wallet_id: wallets[0]?.id || '',
+      note: receipt.note || 'Scanned Receipt',
+    });
   };
 
   const currSymbol = profile?.base_currency === 'INR' ? '₹' : (profile?.base_currency || '₹');
@@ -361,8 +440,8 @@ export const QuickAddBar: React.FC = () => {
             className="flex-1 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-transparent focus:outline-hidden py-1.5 pr-2 min-w-0"
           />
 
-          <div className="flex items-center gap-1">
-            {inputVal.trim().length > 0 && (
+          <div className="flex items-center gap-0.5 sm:gap-1">
+            {inputVal.trim().length > 0 ? (
               <button
                 type="submit"
                 disabled={isParsing}
@@ -375,12 +454,17 @@ export const QuickAddBar: React.FC = () => {
                   <ArrowRight className="w-4 h-4 stroke-[2.5px]" />
                 )}
               </button>
+            ) : (
+              <>
+                <VoiceInputButton onTranscript={handleVoiceTranscript} disabled={isParsing} />
+                <ReceiptUploadButton onReceiptParsed={handleReceiptParsed} disabled={isParsing} />
+              </>
             )}
 
             <button
               type="button"
               onClick={() => setIsManualModalOpen(true)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title="Manual Form"
             >
               <SlidersHorizontal className="w-4 h-4" />

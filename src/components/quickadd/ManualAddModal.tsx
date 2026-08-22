@@ -46,7 +46,7 @@ export const ManualAddModal: React.FC = () => {
       const defaultExpCat = categories.find((c) => c.kind === 'expense');
       setCategoryId(defaultExpCat ? defaultExpCat.id : categories[0]?.id || '');
       setWalletId(wallets[0]?.id || '');
-      setTxnDate(new Date().toISOString().split('T')[0]);
+      setTxnDate(manualModalPrefill.date || new Date().toISOString().split('T')[0]);
       setMerchant(manualModalPrefill.merchant || '');
       setNote(manualModalPrefill.note || '');
     } else {
