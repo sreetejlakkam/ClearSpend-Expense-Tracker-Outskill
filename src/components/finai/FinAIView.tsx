@@ -48,15 +48,19 @@ export const FinAIView: React.FC = () => {
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('clearspend_gemini_key') || '');
-  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'puter' | 'qwen'>('auto');
+  const [preferredModel, setPreferredModel] = useState<'auto' | 'gemini' | 'qwen' | 'deepseek'>('auto');
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(apiKey);
   const [showConsentModal, setShowConsentModal] = useState(false);
-  const [pendingModelSwitch, setPendingModelSwitch] = useState<'auto' | 'gemini' | 'puter' | 'qwen' | null>(null);
+  const [pendingModelSwitch, setPendingModelSwitch] = useState<'auto' | 'gemini' | 'qwen' | 'deepseek' | null>(null);
 
   const isCloudConsentGranted = profile?.ai_consent === 'cloud';
 
-  const handleModelChange = (newModel: 'auto' | 'gemini' | 'puter' | 'qwen') => {
+  const handleModelChange = (newModel: 'auto' | 'gemini' | 'qwen' | 'deepseek') => {
+    if (newModel === 'gemini' && !apiKey) {
+      setShowKeyModal(true);
+      return;
+    }
     if (newModel !== 'auto' && !isCloudConsentGranted) {
       setPendingModelSwitch(newModel);
       setShowConsentModal(true);
@@ -216,16 +220,18 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
     setApiKey(cleanKey);
     if (cleanKey) {
       localStorage.setItem('clearspend_gemini_key', cleanKey);
+      setPreferredModel('gemini');
       addToast({
-        title: 'Gemini API Key Saved',
+        title: 'Google Gemini 2.5 Flash Active',
         message: 'FinAI is now connected to live Google Gemini models!',
         type: 'success',
       });
     } else {
       localStorage.removeItem('clearspend_gemini_key');
+      setPreferredModel('qwen');
       addToast({
-        title: 'Using Built-in Free AI Engine',
-        message: 'FinAI will use the free browser cloud AI engine.',
+        title: 'Using Free AI Engine',
+        message: 'FinAI will use the built-in free Qwen 2.5 AI engine.',
         type: 'info',
       });
     }
@@ -324,20 +330,10 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
             className="text-[11px] font-bold px-2.5 py-1.5 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-slate-100 focus:outline-hidden cursor-pointer"
           >
             <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Smart Engine)</option>
-            <option value="gemini" className="bg-slate-900 text-white">🤖 Gemini 2.5 Flash</option>
-            <option value="puter" className="bg-slate-900 text-white">✨ Free Cloud AI (Puter)</option>
             <option value="qwen" className="bg-slate-900 text-white">🚀 Qwen 2.5 Free AI</option>
+            <option value="deepseek" className="bg-slate-900 text-white">🧠 DeepSeek Free AI</option>
+            <option value="gemini" className="bg-slate-900 text-white">🤖 Google Gemini 2.5 Flash</option>
           </select>
-
-          <button
-            onClick={() => setShowKeyModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-colors border border-white/10"
-            title="Configure Gemini API Key"
-          >
-            <Key className="w-3.5 h-3.5 text-indigo-300" />
-            <span className="hidden sm:inline">{apiKey ? 'Gemini Key Active' : 'Custom API Key'}</span>
-            <span className="sm:hidden">{apiKey ? 'Key' : 'Key'}</span>
-          </button>
 
           <button
             onClick={handleClearChat}
@@ -554,20 +550,33 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
                 className="w-full text-xs font-mono font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:border-brand-600 focus:outline-hidden"
               />
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-between gap-2 pt-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setShowKeyModal(false)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  onClick={() => {
+                    setPreferredModel('qwen');
+                    setShowKeyModal(false);
+                  }}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 transition-colors"
                 >
-                  Cancel
+                  🚀 Use Free Qwen 2.5 (No Key)
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-extrabold shadow-sm transition-all"
-                >
-                  Save API Key
-                </button>
+
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyModal(false)}
+                    className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-extrabold shadow-sm transition-all"
+                  >
+                    Activate Gemini
+                  </button>
+                </div>
               </div>
             </form>
           </div>

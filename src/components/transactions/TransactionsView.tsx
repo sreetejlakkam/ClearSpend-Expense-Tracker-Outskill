@@ -157,7 +157,7 @@ export const TransactionsView: React.FC = () => {
             {t('nav.ledger', 'Ledger & History')}
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            {filteredTransactions.length} transaction{filteredTransactions.length === 1 ? '' : 's'} recorded
+            {filteredTransactions.length} {t('ledger.transactions_recorded', 'transactions recorded')}
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export const TransactionsView: React.FC = () => {
             title="Import Bank Statement CSV"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Import CSV</span>
+            <span className="hidden sm:inline">{t('ledger.import_csv', 'Import CSV')}</span>
           </button>
 
           <button
@@ -308,7 +308,7 @@ export const TransactionsView: React.FC = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search merchant, category, amount, or note…"
+            placeholder={t('ledger.search_placeholder', 'Search merchant, category, amount, or note…')}
             className="w-full text-xs font-medium text-zinc-900 pl-9 pr-8 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:border-brand-700 focus:bg-white focus:outline-hidden"
           />
           {searchQuery && (
@@ -329,10 +329,12 @@ export const TransactionsView: React.FC = () => {
             onChange={(e) => setSelectedMonthFilter(e.target.value)}
             className="w-full text-xs font-semibold bg-zinc-50 border border-zinc-200 rounded-xl px-2.5 py-1.5 text-zinc-700 focus:outline-hidden"
           >
-            <option value="all">All Months</option>
+            <option value="all">{t('ledger.all_months', 'All Months')}</option>
             <option value="2026-08">August 2026</option>
             <option value="2026-07">July 2026</option>
             <option value="2026-06">June 2026</option>
+            <option value="2026-05">May 2026</option>
+            <option value="2026-04">April 2026</option>
           </select>
 
           {/* Category Filter */}
@@ -341,7 +343,7 @@ export const TransactionsView: React.FC = () => {
             onChange={(e) => setActiveCategoryFilter(e.target.value === 'all' ? null : e.target.value)}
             className="w-full text-xs font-semibold bg-zinc-50 border border-zinc-200 rounded-xl px-2.5 py-1.5 text-zinc-700 focus:outline-hidden truncate"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t('ledger.all_categories', 'All Categories')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -355,7 +357,7 @@ export const TransactionsView: React.FC = () => {
             onChange={(e) => setSelectedWalletFilter(e.target.value)}
             className="w-full text-xs font-semibold bg-zinc-50 border border-zinc-200 rounded-xl px-2.5 py-1.5 text-zinc-700 focus:outline-hidden truncate"
           >
-            <option value="all">All Wallets</option>
+            <option value="all">{t('ledger.all_wallets', 'All Wallets')}</option>
             {wallets.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}
@@ -369,9 +371,9 @@ export const TransactionsView: React.FC = () => {
             onChange={(e) => setSelectedKindFilter(e.target.value)}
             className="w-full text-xs font-semibold bg-zinc-50 border border-zinc-200 rounded-xl px-2.5 py-1.5 text-zinc-700 focus:outline-hidden"
           >
-            <option value="all">All Types</option>
-            <option value="expense">Expenses Only</option>
-            <option value="income">Income Only</option>
+            <option value="all">{t('ledger.all_types', 'All Types')}</option>
+            <option value="expense">{t('ledger.expenses_only', 'Expenses Only')}</option>
+            <option value="income">{t('ledger.income_only', 'Income Only')}</option>
           </select>
         </div>
       </div>

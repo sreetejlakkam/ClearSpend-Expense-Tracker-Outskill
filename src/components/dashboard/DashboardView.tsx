@@ -331,7 +331,7 @@ export const DashboardView: React.FC = () => {
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-white truncate">Ask FinAI Copilot</span>
               <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
-                Gemini 2.5
+                Free AI & Qwen 2.5
               </span>
             </div>
             <p className="text-[10.5px] sm:text-[11px] text-slate-300 mt-0.5 truncate">
@@ -341,6 +341,33 @@ export const DashboardView: React.FC = () => {
         </div>
         <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-indigo-200 group-hover:text-white bg-white/10 group-hover:bg-white/20 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0">
           <span>Chat</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
+      {/* 2d. ClearScore™ Financial Health & Wealth Radar (Surprise Flagship Feature) */}
+      <div
+        onClick={() => setActiveTab('clearscore')}
+        className="cursor-pointer p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 hover:from-slate-800 hover:via-indigo-900 hover:to-slate-800 text-white rounded-2xl sm:rounded-3xl shadow-lg border border-cyan-500/30 flex items-center justify-between gap-3 group transition-all"
+      >
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/25 group-hover:scale-105 transition-transform">
+            <Sparkles className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-amber-300" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-white truncate">{t('clearscore.title', 'ClearScore™ Health Radar')}</span>
+              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 shrink-0">
+                100-PT INDEX
+              </span>
+            </div>
+            <p className="text-[10.5px] sm:text-[11px] text-slate-300 mt-0.5 truncate">
+              {t('clearscore.subtitle', '5-pillar wealth radar & What-If stress scenario tester')}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-cyan-200 group-hover:text-white bg-white/10 group-hover:bg-white/20 px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0">
+          <span>Radar</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </div>
       </div>

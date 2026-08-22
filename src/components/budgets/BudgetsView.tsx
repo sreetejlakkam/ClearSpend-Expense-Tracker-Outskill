@@ -272,7 +272,7 @@ export const BudgetsView: React.FC = () => {
             {t('budgets.title', 'Monthly Budget Envelopes')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Envelope limits, 5-month trends, proactive burn rate & velocity infographics
+            {t('budgets.subtitle', 'Envelope limits, 5-month trends, proactive burn rate & velocity infographics')}
           </p>
         </div>
         <button
@@ -280,8 +280,8 @@ export const BudgetsView: React.FC = () => {
           className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-2xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold shadow-md shadow-brand-700/20 transition-all active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Set Envelope</span>
-          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">{t('budgets.add_envelope', 'Set Envelope')}</span>
+          <span className="sm:hidden">{t('common.add', 'Add')}</span>
         </button>
       </div>
 
@@ -302,7 +302,11 @@ export const BudgetsView: React.FC = () => {
                   ? 'bg-amber-500/30 text-amber-300 border border-amber-400/30'
                   : 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/30'
               }`}>
-                {overallPct > 100 ? 'Over Budget' : overallPct >= 80 ? 'Caution Zone' : 'Healthy Pace'}
+                {overallPct > 100
+                  ? t('budgets.status_over', 'Over Budget')
+                  : overallPct >= 80
+                  ? t('budgets.status_caution', 'Caution Zone')
+                  : t('budgets.status_healthy', 'Healthy Pace')}
               </span>
             </div>
 
@@ -311,28 +315,28 @@ export const BudgetsView: React.FC = () => {
                 {currSym}{totalSpentOnBudgeted.toLocaleString()}
               </span>
               <span className="text-sm text-slate-400 font-semibold">
-                / {currSym}{totalBudgeted.toLocaleString()} budgeted
+                / {currSym}{totalBudgeted.toLocaleString()} {t('budgets.limit', 'budgeted')}
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              Remaining Envelope Pool: <strong className="text-emerald-300">{currSym}{remainingTotalBudget.toLocaleString()}</strong> across {budgets.length} envelopes
+              {t('budgets.remaining_pool', 'Remaining Envelope Pool')}: <strong className="text-emerald-300">{currSym}{remainingTotalBudget.toLocaleString()}</strong> ({budgets.length} {t('budgets.subtab_envelopes', 'Envelopes')})
             </p>
           </div>
 
           {/* Daily Burn Gauge Info */}
           <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shrink-0 min-w-[150px] space-y-1">
             <div className="flex items-center justify-between text-[11px] text-slate-300">
-              <span>Safe Daily Target:</span>
+              <span>{t('budgets.safe_daily_target', 'Safe Daily Target')}:</span>
               <strong className="text-white tabular-nums">{currSym}{totalDailyTarget}/d</strong>
             </div>
             <div className="flex items-center justify-between text-[11px] text-slate-300">
-              <span>Actual Burn Rate:</span>
+              <span>{t('budgets.actual_burn_rate', 'Actual Burn Rate')}:</span>
               <strong className={`tabular-nums ${currentDailyBurn > totalDailyTarget ? 'text-rose-300' : 'text-emerald-300'}`}>
                 {currSym}{currentDailyBurn}/d
               </strong>
             </div>
             <div className="text-[10px] text-slate-400 font-medium pt-0.5 border-t border-white/10">
-              {daysRemaining} day{daysRemaining === 1 ? '' : 's'} remaining in month
+              {daysRemaining} {t('budgets.days_remaining', 'days remaining in month')}
             </div>
           </div>
         </div>
@@ -369,7 +373,7 @@ export const BudgetsView: React.FC = () => {
           }`}
         >
           <PiggyBank className="w-3.5 h-3.5" />
-          <span>Envelopes ({budgets.length})</span>
+          <span>{t('budgets.subtab_envelopes', 'Envelopes')} ({budgets.length})</span>
         </button>
 
         <button
@@ -381,7 +385,7 @@ export const BudgetsView: React.FC = () => {
           }`}
         >
           <BarChart3 className="w-3.5 h-3.5" />
-          <span>Committed & Trends</span>
+          <span>{t('budgets.subtab_committed', 'Committed & Trends')}</span>
         </button>
 
         <button
@@ -393,7 +397,7 @@ export const BudgetsView: React.FC = () => {
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
-          <span>Subscriptions</span>
+          <span>{t('budgets.subtab_subscriptions', 'Subscriptions')}</span>
         </button>
 
         <button
@@ -405,7 +409,7 @@ export const BudgetsView: React.FC = () => {
           }`}
         >
           <Target className="w-3.5 h-3.5" />
-          <span>Goals</span>
+          <span>{t('budgets.subtab_goals', 'Goals')}</span>
         </button>
 
         <button
@@ -417,7 +421,7 @@ export const BudgetsView: React.FC = () => {
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Simulator</span>
+          <span>{t('budgets.subtab_simulator', 'Simulator')}</span>
         </button>
       </div>
 

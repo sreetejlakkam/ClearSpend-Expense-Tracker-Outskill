@@ -16,6 +16,7 @@ import { CompoundingView } from './components/compounding/CompoundingView';
 import { ReviewInboxView } from './components/review/ReviewInboxView';
 import { SettingsView } from './components/settings/SettingsView';
 import { FamilyRoomView } from './components/family/FamilyRoomView';
+import { ClearScoreView } from './components/health/ClearScoreView';
 import { parseBankSMS } from './lib/smsParser';
 
 export const AppContent: React.FC = () => {
@@ -34,22 +35,16 @@ export const AppContent: React.FC = () => {
           amount: String(parsedSms.amount),
           merchant: parsedSms.merchant,
           date: parsedSms.txn_date,
-          note: `Shared via SMS: ${parsedSms.bank_name || 'Bank'}`,
+          hint: 'Imported from SMS share',
         });
         addToast({
-          title: 'SMS Parsed!',
-          message: `Detected ${parsedSms.bank_name || 'Bank'} transaction for ₹${parsedSms.amount}.`,
+          title: 'SMS Transaction Detected',
+          message: `Parsed ${parsedSms.merchant || 'transaction'} for ₹${parsedSms.amount}`,
           type: 'success',
         });
-      } else {
-        openManualAdd({
-          note: sharedText,
-        });
       }
-      // Clean up URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [openManualAdd, addToast]);
+  }, []);
 
   // Auth Gate
   if (!isAuthenticated) {
@@ -84,6 +79,7 @@ export const AppContent: React.FC = () => {
         {activeTab === 'transactions' && <TransactionsView />}
         {activeTab === 'budgets' && <BudgetsView />}
         {activeTab === 'finai' && <FinAIView />}
+        {activeTab === 'clearscore' && <ClearScoreView />}
         {activeTab === 'compounding' && <CompoundingView />}
         {activeTab === 'insights' && <InsightsView />}
         {activeTab === 'review' && <ReviewInboxView />}
