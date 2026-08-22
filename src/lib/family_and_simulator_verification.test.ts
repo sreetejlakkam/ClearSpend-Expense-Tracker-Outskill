@@ -15,8 +15,8 @@ describe('Family Room Data & Infographics Verification', () => {
       const summary = calculateHouseholdMonthlySummary(household.id, month, members, txns);
       expect(summary.length).toBe(2);
 
-      const totalIncome = summary.reduce((sum, item) => sum + item.total_income, 0);
-      const totalExpense = summary.reduce((sum, item) => sum + item.total_expense, 0);
+      const totalIncome = summary.reduce((sum, item) => sum + (item.total_income || 0), 0);
+      const totalExpense = summary.reduce((sum, item) => sum + (item.total_expense || 0), 0);
       const netSavings = totalIncome - totalExpense;
 
       // Aarav (85k-100k) + Priya (70k) >= 1,55,000
