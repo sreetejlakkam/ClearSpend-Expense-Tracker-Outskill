@@ -6,6 +6,13 @@ export type TransactionSource = 'manual' | 'nl' | 'csv';
 export type TransactionStatus = 'active' | 'merged' | 'dismissed';
 export type InsightType = 'forecast' | 'top_mover' | 'subscription' | 'streak' | 'anomaly';
 
+// Phase 8: Family Finance AI Enums & Types
+export type HouseholdRole = 'owner' | 'member';
+export type MemberStatus = 'invited' | 'active' | 'left' | 'removed';
+export type TxnVisibility = 'private' | 'amount_only' | 'shared';
+export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked';
+export type ViewScope = 'personal' | 'household';
+
 export interface Profile {
   id: string;
   email: string;
@@ -26,6 +33,8 @@ export interface Wallet {
   currency: string;
   opening_balance: number;
   is_archived: boolean;
+  household_id?: string | null;
+  is_shared?: boolean;
   created_at: string;
 }
 
@@ -37,6 +46,7 @@ export interface Category {
   color: string;
   kind: TransactionKind;
   is_default: boolean;
+  default_visibility?: TxnVisibility;
   created_at: string;
 }
 
@@ -57,6 +67,8 @@ export interface Transaction {
   fingerprint?: string;
   duplicate_of_id?: string | null;
   status: TransactionStatus;
+  household_id?: string | null;
+  visibility?: TxnVisibility;
   created_at: string;
   updated_at: string;
 }
@@ -104,6 +116,7 @@ export interface ParsedTransactionResult {
   txn_date: string;
   wallet_id?: string;
   note: string;
+  visibility?: TxnVisibility;
   degraded?: boolean;
 }
 
@@ -155,3 +168,117 @@ export interface Goal {
   updated_at: string;
 }
 
+// -------------------------------------------------------------
+// Phase 8: Family Finance AI Data Structures
+// -------------------------------------------------------------
+
+export interface Household {
+  id: string;
+  name: string;
+  base_currency: string;
+  created_by: string;
+  plan: 'free' | 'family_premium';
+  plan_expires_at?: string | null;
+  created_at: string;
+}
+
+export interface HouseholdMember {
+  id: string;
+  household_id: string;
+  user_id: string;
+  role: HouseholdRole;
+  status: MemberStatus;
+  display_name: string;
+  share_summary: boolean;       // Layer A: Total Income, Expense, Savings
+  share_categories: boolean;    // Layer A extended: Category Totals without merchants
+  contribution_share?: number | null; // null = auto (income-proportional)
+  joined_at: string;
+  left_at?: string | null;
+}
+
+export interface HouseholdInvite {
+  id: string;
+  household_id: string;
+  invited_email: string;
+  invited_by: string;
+  token: string;
+  status: InviteStatus;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface HouseholdBudget {
+  id: string;
+  household_id: string;
+  category_id?: string | null;
+  name: string;
+  amount: number;
+  period: string;
+  start_month: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface HouseholdGoal {
+  id: string;
+  household_id: string;
+  name: string;
+  target_amount: number;
+  saved_amount: number;
+  target_date?: string;
+  expected_return_pct: number;
+  icon?: string;
+  color?: string;
+  is_achieved: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface HouseholdGoalContribution {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  monthly_amount: number;
+}
+
+export interface HouseholdAuditLog {
+  id: string;
+  household_id: string;
+  actor_id?: string | null;
+  action: string;
+  detail?: any;
+  created_at: string;
+}
+
+export interface Entitlement {
+  id: string;
+  household_id?: string | null;
+  user_id?: string | null;
+  feature: string;
+  granted_at: string;
+  expires_at?: string | null;
+  source: 'trial' | 'purchase' | 'promo' | 'demo';
+}
+
+export interface HouseholdMonthlySummaryItem {
+  user_id: string;
+  display_name: string;
+  total_income: number | null;
+  total_expense: number | null;
+  net_savings: number | null;
+  is_estimated: boolean;
+}
+
+export interface HouseholdLedgerRow {
+  id: string;
+  household_id: string;
+  user_id: string;
+  amount: number;
+  kind: TransactionKind;
+  txn_date: string;
+  category_id: string;
+  wallet_id: string;
+  visibility: TxnVisibility;
+  merchant: string;
+  note?: string;
+}

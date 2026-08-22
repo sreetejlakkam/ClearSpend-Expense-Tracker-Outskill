@@ -13,6 +13,9 @@ export const Header: React.FC = () => {
     activeTab,
     profile,
     isAuthenticated,
+    viewScope,
+    setViewScope,
+    household,
   } = useStore();
 
   const { t, language, setLanguage } = useTranslation();
@@ -53,7 +56,19 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 transition-all shadow-[0_1px_3px_0_rgba(15,23,42,0.03)] w-full max-w-full overflow-hidden">
+      <header
+        className={`sticky top-0 z-30 transition-all shadow-[0_1px_3px_0_rgba(15,23,42,0.03)] w-full max-w-full overflow-hidden ${
+          viewScope === 'household'
+            ? 'bg-teal-950/90 dark:bg-teal-950/95 backdrop-blur-xl border-b-2 border-teal-500/50 text-white'
+            : 'bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800'
+        }`}
+      >
+        {viewScope === 'household' && (
+          <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-[10px] font-bold py-0.5 px-3 text-center flex items-center justify-center gap-1.5 shadow-xs">
+            <span>👨‍👩‍👧</span>
+            <span>{household?.name || 'Shared Family Room'} • Combined Household Lens Active</span>
+          </div>
+        )}
         <div className="max-w-4xl mx-auto px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-2">
           
           {/* Left: App Logo & Brand (Click opens About Us modal) */}
@@ -78,8 +93,37 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Month Switcher (Shifted slightly left for balanced mobile layout) */}
-          <div className="flex items-center justify-center min-w-0 mx-auto">
+          {/* Month Switcher & Household Scope Switcher */}
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 mx-auto">
+            {/* Household Switcher Pill (👤 My Money ⇄ 👨‍👩‍👧 Family) */}
+            <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 rounded-xl p-0.5 shadow-inner-sm shrink-0">
+              <button
+                onClick={() => setViewScope('personal')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
+                  viewScope === 'personal'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Personal Private Ledger (My Money)"
+              >
+                <span>👤</span>
+                <span className="hidden sm:inline">My Money</span>
+              </button>
+              <button
+                onClick={() => setViewScope('household')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all ${
+                  viewScope === 'household'
+                    ? 'bg-teal-600 dark:bg-teal-500 text-white shadow-xs font-black'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400'
+                }`}
+                title="Shared Household Planning (Family Room)"
+              >
+                <span>👨‍👩‍👧</span>
+                <span className="hidden sm:inline">Family</span>
+              </button>
+            </div>
+
+            {/* Month Switcher */}
             <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 rounded-xl p-0.5 shadow-inner-sm shrink-0">
               <button
                 onClick={() => changeMonth(-1)}
@@ -89,7 +133,7 @@ export const Header: React.FC = () => {
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[10.5px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 px-1 sm:px-1.5 select-none min-w-[65px] sm:min-w-[80px] text-center capitalize">
+              <span className="text-[10.5px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 px-1 sm:px-1.5 select-none min-w-[55px] sm:min-w-[75px] text-center capitalize">
                 {monthName}
               </span>
               <button

@@ -11,6 +11,16 @@ import {
   RecurringItem,
   Transaction,
   Wallet,
+  Household,
+  HouseholdMember,
+  HouseholdInvite,
+  HouseholdBudget,
+  HouseholdGoal,
+  HouseholdAuditLog,
+  Entitlement,
+  HouseholdMonthlySummaryItem,
+  HouseholdLedgerRow,
+  ViewScope,
 } from '../types';
 import {
   fetchUserData,
@@ -27,6 +37,25 @@ import {
   subscribeToUserChanges,
   syncOutbox,
 } from './db';
+import {
+  getLocalHousehold,
+  setLocalHousehold,
+  getLocalHouseholdMembers,
+  setLocalHouseholdMembers,
+  getLocalHouseholdBudgets,
+  setLocalHouseholdBudgets,
+  getLocalHouseholdGoals,
+  setLocalHouseholdGoals,
+  getLocalEntitlements,
+  setLocalEntitlements,
+  getLocalAuditLog,
+  calculateHouseholdMonthlySummary,
+  filterHouseholdLedger,
+  createHousehold,
+  createHouseholdInvite,
+  updateMemberSharingToggles,
+  leaveHousehold,
+} from './household';
 import { generateAIInsights, scanAnomalies, scanDuplicates } from './insights';
 import { generateFingerprint, parseTransactionInput, ParseOutcome } from './parser';
 import { DEFAULT_CATEGORIES, getInitialDemoState } from './storage';
@@ -156,6 +185,29 @@ interface StoreContextType {
   activeCategoryFilter: string | null;
   setActiveCategoryFilter: (catId: string | null) => void;
 
+  // Phase 8: Family Finance AI
+  viewScope: ViewScope;
+  setViewScope: (scope: ViewScope) => void;
+  household: Household | null;
+  householdMembers: HouseholdMember[];
+  householdBudgets: HouseholdBudget[];
+  householdGoals: HouseholdGoal[];
+  householdAuditLog: HouseholdAuditLog[];
+  entitlements: Entitlement[];
+  hasFamilyPremium: boolean;
+  isPartnerPreview: boolean;
+  setIsPartnerPreview: (preview: boolean) => void;
+  householdMonthlySummary: HouseholdMonthlySummaryItem[];
+  householdLedger: HouseholdLedgerRow[];
+  createNewHousehold: (name: string, ownerName: string) => Promise<void>;
+  inviteHouseholdPartner: (email: string) => Promise<HouseholdInvite>;
+  updateSharingPreferences: (shareSummary: boolean, shareCategories: boolean, contributionShare?: number | null) => Promise<void>;
+  leaveCurrentHousehold: (resolveOption?: 'keep_personal' | 'transfer_owner') => Promise<void>;
+  addJointBudget: (budget: Omit<HouseholdBudget, 'id' | 'created_at'>) => Promise<void>;
+  addJointGoal: (goal: Omit<HouseholdGoal, 'id' | 'created_at' | 'is_achieved'>) => Promise<void>;
+  contributeToJointGoal: (goalId: string, amount: number) => Promise<void>;
+  upgradeToFamilyPremium: () => Promise<void>;
+
   // Toasts
   toasts: ToastMessage[];
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
@@ -245,6 +297,46 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [insights, setInsights] = useState<Insight[]>([]);
 
+  // Phase 8: Family Finance AI state
+  const [viewScope, setViewScope] = useState<ViewScope>('personal');
+  const [isPartnerPreview, setIsPartnerPreview] = useState<boolean>(false);
+
+  const [household, setHousehold] = useState<Household | null>(() => {
+    const saved = getLocalHousehold();
+    if (saved) return saved;
+    return isDemoSession ? (demoData as any).demoHousehold?.household || null : null;
+  });
+
+  const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>(() => {
+    const saved = getLocalHouseholdMembers();
+    if (saved.length > 0) return saved;
+    return isDemoSession ? (demoData as any).demoHousehold?.members || [] : [];
+  });
+
+  const [householdBudgets, setHouseholdBudgets] = useState<HouseholdBudget[]>(() => {
+    const saved = getLocalHouseholdBudgets();
+    if (saved.length > 0) return saved;
+    return isDemoSession ? (demoData as any).demoHousehold?.budgets || [] : [];
+  });
+
+  const [householdGoals, setHouseholdGoals] = useState<HouseholdGoal[]>(() => {
+    const saved = getLocalHouseholdGoals();
+    if (saved.length > 0) return saved;
+    return isDemoSession ? (demoData as any).demoHousehold?.goals || [] : [];
+  });
+
+  const [entitlements, setEntitlements] = useState<Entitlement[]>(() => {
+    const saved = getLocalEntitlements();
+    if (saved.length > 0) return saved;
+    return isDemoSession
+      ? [{ id: 'ent_demo', household_id: 'hh_sharma_demo', feature: 'family_premium', granted_at: new Date().toISOString(), source: 'demo' }]
+      : [];
+  });
+
+  const [householdAuditLog] = useState<HouseholdAuditLog[]>(() => {
+    return getLocalAuditLog();
+  });
+
   // Navigation & Real Current Date (Unfrozen from hardcoded date!)
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -316,12 +408,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem(STORAGE_KEYS.IS_DEMO, String(isDemoSession));
   }, [isDemoSession]);
 
+  useEffect(() => {
+    setLocalHousehold(household);
+  }, [household]);
+
+  useEffect(() => {
+    setLocalHouseholdMembers(householdMembers);
+  }, [householdMembers]);
+
+  useEffect(() => {
+    setLocalHouseholdBudgets(householdBudgets);
+  }, [householdBudgets]);
+
+  useEffect(() => {
+    setLocalHouseholdGoals(householdGoals);
+  }, [householdGoals]);
+
+  useEffect(() => {
+    setLocalEntitlements(entitlements);
+  }, [entitlements]);
+
   // Selected Month formatted "YYYY-MM"
   const selectedMonthStr = useMemo(() => {
     const y = selectedDate.getFullYear();
     const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
     return `${y}-${m}`;
   }, [selectedDate]);
+
+  // Phase 8: Family Finance Computed Memos
+  const hasFamilyPremium = useMemo(() => {
+    if (household?.plan === 'family_premium') return true;
+    return entitlements.some((e) => e.feature === 'family_premium');
+  }, [household, entitlements]);
+
+  const householdMonthlySummary = useMemo(() => {
+    if (!household) return [];
+    return calculateHouseholdMonthlySummary(household.id, `${selectedMonthStr}-01`, householdMembers, transactions);
+  }, [household, selectedMonthStr, householdMembers, transactions]);
+
+  const householdLedger = useMemo(() => {
+    if (!household || !profile) return [];
+    const viewingUserId = isPartnerPreview ? 'partner_preview_mode' : profile.id;
+    return filterHouseholdLedger(household.id, viewingUserId, transactions);
+  }, [household, profile, isPartnerPreview, transactions]);
 
   const changeMonth = (delta: number) => {
     setSelectedDate((prev) => {
@@ -1058,6 +1187,108 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setInsights((prev) => prev.filter((i) => i.id !== id));
   };
 
+  // Phase 8: Family Finance AI Actions
+  const createNewHousehold = async (name: string, ownerName: string) => {
+    if (!profile) return;
+    const { household: newHh, member } = await createHousehold(name, ownerName || profile.display_name, profile.id);
+    setHousehold(newHh);
+    setHouseholdMembers([member]);
+    setViewScope('household');
+    addToast({ title: 'Family Room Created', message: `Welcome to ${newHh.name}! You can now invite your partner.`, type: 'success' });
+  };
+
+  const inviteHouseholdPartner = async (email: string): Promise<HouseholdInvite> => {
+    if (!household || !profile) throw new Error('No active household');
+    const invite = await createHouseholdInvite(household.id, email, profile.id);
+    addToast({ title: 'Invite Generated', message: `Invitation link created for ${email}`, type: 'success' });
+    return invite;
+  };
+
+  const updateSharingPreferences = async (
+    shareSummary: boolean,
+    shareCategories: boolean,
+    contributionShare?: number | null
+  ) => {
+    if (!household || !profile) return;
+    await updateMemberSharingToggles(household.id, profile.id, shareSummary, shareCategories, contributionShare || 0.5);
+    setHouseholdMembers((prev) =>
+      prev.map((m) =>
+        m.user_id === profile.id
+          ? { ...m, share_summary: shareSummary, share_categories: shareCategories, contribution_share: contributionShare !== undefined ? contributionShare : m.contribution_share }
+          : m
+      )
+    );
+    addToast({ title: 'Privacy Preferences Saved', message: 'Your household sharing rules have been updated.', type: 'success' });
+  };
+
+  const leaveCurrentHousehold = async (resolveOption: 'keep_personal' | 'transfer_owner' = 'keep_personal') => {
+    if (!household || !profile) return;
+    await leaveHousehold(household.id, profile.id, resolveOption);
+    setHousehold(null);
+    setHouseholdMembers([]);
+    setHouseholdBudgets([]);
+    setHouseholdGoals([]);
+    setViewScope('personal');
+    addToast({ title: 'Left Household', message: 'You have exited the family room. All your data is restored to private.', type: 'info' });
+  };
+
+  const addJointBudget = async (budget: Omit<HouseholdBudget, 'id' | 'created_at'>) => {
+    if (!household || !profile) return;
+    const newB: HouseholdBudget = {
+      id: `hb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      ...budget,
+      created_at: new Date().toISOString(),
+    };
+    setHouseholdBudgets((prev) => [...prev, newB]);
+    addToast({ title: 'Shared Envelope Added', message: `Joint budget "${newB.name}" active.`, type: 'success' });
+  };
+
+  const addJointGoal = async (goal: Omit<HouseholdGoal, 'id' | 'created_at' | 'is_achieved'>) => {
+    if (!household || !profile) return;
+    const newG: HouseholdGoal = {
+      id: `hg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      ...goal,
+      is_achieved: false,
+      created_at: new Date().toISOString(),
+    };
+    setHouseholdGoals((prev) => [...prev, newG]);
+    addToast({ title: 'Joint Goal Created', message: `Goal "${newG.name}" created!`, type: 'success' });
+  };
+
+  const contributeToJointGoal = async (goalId: string, amount: number) => {
+    setHouseholdGoals((prev) =>
+      prev.map((g) => {
+        if (g.id === goalId) {
+          const newSaved = g.saved_amount + amount;
+          return {
+            ...g,
+            saved_amount: newSaved,
+            is_achieved: newSaved >= g.target_amount,
+          };
+        }
+        return g;
+      })
+    );
+    addToast({ title: 'Contribution Logged', message: `Added ₹${amount.toLocaleString('en-IN')} to joint goal!`, type: 'success' });
+  };
+
+  const upgradeToFamilyPremium = async () => {
+    if (household) {
+      const updated = { ...household, plan: 'family_premium' as const };
+      setHousehold(updated);
+    }
+    const newEnt: Entitlement = {
+      id: `ent_${Date.now()}`,
+      household_id: household?.id,
+      user_id: profile?.id,
+      feature: 'family_premium',
+      granted_at: new Date().toISOString(),
+      source: 'demo',
+    };
+    setEntitlements((prev) => [...prev, newEnt]);
+    addToast({ title: 'Family Premium Unlocked 🎉', message: 'All advanced AI and multi-goal tools active!', type: 'success' });
+  };
+
   // Reset to full demo state
   const resetToDemoData = () => {
     setIsDemoSession(true);
@@ -1070,7 +1301,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategoryRules(demo.rules);
     setRecurringItems((demo as any).recurringItems || []);
     setGoals((demo as any).goals || []);
-    addToast({ title: 'Ledger Reset', message: 'Restored realistic multi-month demo transactions.', type: 'success' });
+    if ((demo as any).demoHousehold) {
+      setHousehold((demo as any).demoHousehold.household);
+      setHouseholdMembers((demo as any).demoHousehold.members);
+      setHouseholdBudgets((demo as any).demoHousehold.budgets);
+      setHouseholdGoals((demo as any).demoHousehold.goals);
+    }
+    addToast({ title: 'Ledger Reset', message: 'Restored realistic multi-month demo transactions & family room.', type: 'success' });
   };
 
   return (
@@ -1141,6 +1378,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setEditingTransaction,
         activeCategoryFilter,
         setActiveCategoryFilter,
+        viewScope,
+        setViewScope,
+        household,
+        householdMembers,
+        householdBudgets,
+        householdGoals,
+        householdAuditLog,
+        entitlements,
+        hasFamilyPremium,
+        isPartnerPreview,
+        setIsPartnerPreview,
+        householdMonthlySummary,
+        householdLedger,
+        createNewHousehold,
+        inviteHouseholdPartner,
+        updateSharingPreferences,
+        leaveCurrentHousehold,
+        addJointBudget,
+        addJointGoal,
+        contributeToJointGoal,
+        upgradeToFamilyPremium,
         toasts,
         addToast,
         removeToast,

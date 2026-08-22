@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../lib/store';
 import { Modal } from '../common/Modal';
-import { TransactionKind } from '../../types';
+import { TransactionKind, TxnVisibility } from '../../types';
 import { Trash2, Check, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
 export const ManualAddModal: React.FC = () => {
@@ -17,6 +17,7 @@ export const ManualAddModal: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     profile,
+    household,
   } = useStore();
 
   const isEditing = Boolean(editingTransaction);
@@ -28,6 +29,7 @@ export const ManualAddModal: React.FC = () => {
   const [txnDate, setTxnDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [merchant, setMerchant] = useState<string>('');
   const [note, setNote] = useState<string>('');
+  const [visibility, setVisibility] = useState<TxnVisibility>('private');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Populate form on edit or prefill
@@ -40,6 +42,7 @@ export const ManualAddModal: React.FC = () => {
       setTxnDate(editingTransaction.txn_date);
       setMerchant(editingTransaction.merchant);
       setNote(editingTransaction.note || '');
+      setVisibility(editingTransaction.visibility || 'private');
     } else if (manualModalPrefill) {
       setAmount(manualModalPrefill.amount || '');
       setKind('expense');
@@ -49,6 +52,7 @@ export const ManualAddModal: React.FC = () => {
       setTxnDate(manualModalPrefill.date || new Date().toISOString().split('T')[0]);
       setMerchant(manualModalPrefill.merchant || '');
       setNote(manualModalPrefill.note || '');
+      setVisibility('private');
     } else {
       setAmount('');
       setKind('expense');
@@ -58,6 +62,7 @@ export const ManualAddModal: React.FC = () => {
       setTxnDate(new Date().toISOString().split('T')[0]);
       setMerchant('');
       setNote('');
+      setVisibility('private');
     }
   }, [editingTransaction, manualModalPrefill, isManualModalOpen, categories, wallets]);
 
@@ -82,6 +87,8 @@ export const ManualAddModal: React.FC = () => {
           txn_date: txnDate,
           merchant: merchant.trim() || (kind === 'income' ? 'Income' : 'Expense'),
           note: note.trim(),
+          household_id: household ? household.id : null,
+          visibility,
         });
       } else {
         await addTransaction({
@@ -95,6 +102,8 @@ export const ManualAddModal: React.FC = () => {
           source: 'manual',
           status: 'active',
           was_corrected: false,
+          household_id: household ? household.id : null,
+          visibility,
         });
       }
       handleClose();
@@ -258,6 +267,63 @@ export const ManualAddModal: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Phase 8: Family Sharing & Visibility Control */}
+        {household && (
+          <div className="p-3 bg-teal-50/80 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/50 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-teal-900 dark:text-teal-200 flex items-center gap-1.5">
+                <span>👨‍👩‍👧</span>
+                <span>Family Sharing Visibility</span>
+              </label>
+              <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
+                {visibility === 'private' ? 'Private' : visibility === 'amount_only' ? 'Amount Only' : 'Shared'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 bg-white/80 dark:bg-slate-800/80 p-1 rounded-xl border border-teal-100 dark:border-teal-900">
+              <button
+                type="button"
+                onClick={() => setVisibility('private')}
+                className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                  visibility === 'private'
+                    ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                🔒 Private
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibility('amount_only')}
+                className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                  visibility === 'amount_only'
+                    ? 'bg-teal-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                👁️ Amount
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibility('shared')}
+                className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                  visibility === 'shared'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                🤝 Full Shared
+              </button>
+            </div>
+
+            <p className="text-[11px] text-teal-800 dark:text-teal-300/90 leading-tight">
+              {visibility === 'private' && '🔒 Completely hidden from your partner. Included only in your private totals.'}
+              {visibility === 'amount_only' && `👁️ Partner sees ₹${amount || '0'} in ${categories.find((c) => c.id === categoryId)?.name || 'Category'}. Merchant name and notes remain hidden.`}
+              {visibility === 'shared' && '🤝 Visible to both partners in the shared family room with full merchant and note details.'}
+            </p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="pt-2 flex items-center justify-between gap-3">

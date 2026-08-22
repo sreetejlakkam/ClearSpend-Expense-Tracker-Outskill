@@ -15,10 +15,11 @@ import { FinAIView } from './components/finai/FinAIView';
 import { CompoundingView } from './components/compounding/CompoundingView';
 import { ReviewInboxView } from './components/review/ReviewInboxView';
 import { SettingsView } from './components/settings/SettingsView';
+import { FamilyRoomView } from './components/family/FamilyRoomView';
 import { parseBankSMS } from './lib/smsParser';
 
 export const AppContent: React.FC = () => {
-  const { isAuthenticated, isOnboarded, activeTab, openManualAdd, addToast } = useStore();
+  const { isAuthenticated, isOnboarded, activeTab, viewScope, openManualAdd, addToast } = useStore();
 
   // Web Share Target SMS Handler (PWA)
   useEffect(() => {
@@ -79,7 +80,7 @@ export const AppContent: React.FC = () => {
       {/* Main Dynamic View Content */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 overflow-x-hidden">
 
-        {activeTab === 'dashboard' && <DashboardView />}
+        {activeTab === 'dashboard' && (viewScope === 'household' ? <FamilyRoomView /> : <DashboardView />)}
         {activeTab === 'transactions' && <TransactionsView />}
         {activeTab === 'budgets' && <BudgetsView />}
         {activeTab === 'finai' && <FinAIView />}

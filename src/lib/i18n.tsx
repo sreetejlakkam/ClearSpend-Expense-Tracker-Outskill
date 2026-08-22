@@ -99,10 +99,20 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'settings.categories_title': 'Expense Categories',
     'settings.rules_title': 'Learned Category Rules',
     'settings.data_title': 'Data Management',
-    'settings.export_csv': 'Export All Transactions (CSV)',
+    'settings.export_csv': 'Export All Data (CSV)',
     'settings.reset_demo': 'Reset to 40+ Demo Transactions',
     'settings.sign_out': 'Sign Out',
     'settings.llm_title': 'FinAI & LLM Engine',
+
+    // Family Finance (Phase 8)
+    'family.room_title': 'Family Finance Room',
+    'family.scope_my_money': 'My Money',
+    'family.scope_family': 'Family',
+    'family.joint_envelopes': 'Shared Envelopes',
+    'family.joint_goals': 'Joint Goals',
+    'family.ask_family_ai': 'Ask Family AI',
+    'family.fair_share': 'Fair Share & Household Contribution',
+    'family.partner_preview': 'Preview What Partner Sees',
 
     // Auth
     'auth.hero_title': 'Autonomous AI Expense Tracker & Wealth Coach',
@@ -215,6 +225,16 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'settings.sign_out': 'లాగ్ అవుట్',
     'settings.llm_title': 'ఫిన్‌ఏఐ & LLM ఇంజిన్',
 
+    // Family Finance (Phase 8)
+    'family.room_title': 'కుటుంబ ఫైనాన్స్ గది',
+    'family.scope_my_money': 'నా డబ్బు',
+    'family.scope_family': 'కుటుంబం',
+    'family.joint_envelopes': 'ఉమ్మడి బడ్జెట్లు',
+    'family.joint_goals': 'ఉమ్మడి లక్ష్యాలు',
+    'family.ask_family_ai': 'ఫ్యామిలీ AI ని అడగండి',
+    'family.fair_share': 'న్యాయమైన భాగస్వామ్యం & సహకారం',
+    'family.partner_preview': 'భాగస్వామి వీక్షణ ప్రివ్యూ',
+
     // Auth
     'auth.hero_title': 'ఆటోమేటిక్ ఏఐ ఖర్చుల ట్రాకర్ & వెల్త్ కోచ్',
     'auth.signin_tab': 'సైన్ ఇన్',
@@ -325,6 +345,16 @@ export const translations: Record<LanguageCode, Record<string, string>> = {
     'settings.reset_demo': '40+ डेमो लेन-देन पर रीसेट करें',
     'settings.sign_out': 'साइन आउट',
     'settings.llm_title': 'फिनएआई और LLM इंजन',
+
+    // Family Finance (Phase 8)
+    'family.room_title': 'पारिवारिक वित्त कक्ष',
+    'family.scope_my_money': 'मेरा पैसा',
+    'family.scope_family': 'परिवार',
+    'family.joint_envelopes': 'साझा बजट',
+    'family.joint_goals': 'संयुक्त लक्ष्य',
+    'family.ask_family_ai': 'पारिवारिक AI से पूछें',
+    'family.fair_share': 'उचित विभाजन और साझा योगदान',
+    'family.partner_preview': 'पार्टनर दृश्य पूर्वावलोकन',
 
     // Auth
     'auth.hero_title': 'स्वचालित एआई खर्च ट्रैकर और वेल्थ कोच',

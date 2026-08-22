@@ -26,7 +26,8 @@ import {
   TrendingUp,
   ArrowRight,
   BellRing,
-  Trash
+  Trash,
+  Users
 } from 'lucide-react';
 
 import { Category, TransactionKind, Wallet, WalletType } from '../../types';
@@ -68,7 +69,12 @@ export const SettingsView: React.FC = () => {
     resetToDemoData,
     clearAllUserData,
     logout,
-    setActiveTab
+    setActiveTab,
+    household,
+    householdMembers,
+    isPartnerPreview,
+    setIsPartnerPreview,
+    setViewScope,
   } = useStore();
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(() => loadNotificationSettings());
@@ -457,7 +463,87 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 7. Theme & Appearance Selector (Moved near bottom above data management) */}
+      {/* 7. Family Finance & Household Privacy Settings */}
+      <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Family Finance & Sharing Rules
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {household ? `Active Room: ${household.name}` : 'Joint planning & two-layer privacy'}
+              </p>
+            </div>
+          </div>
+          {household && (
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+              Active Room
+            </span>
+          )}
+        </div>
+
+        {household ? (
+          <div className="space-y-2.5">
+            <div className="p-3 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Room Name:</span>
+                <span className="font-bold text-teal-700 dark:text-teal-300">{household.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Active Partners:</span>
+                <span className="text-slate-600 dark:text-slate-400">{householdMembers.filter((m) => m.status === 'active').length} members</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsPartnerPreview(!isPartnerPreview)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                  isPartnerPreview
+                    ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-400'
+                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <span>{isPartnerPreview ? '👁️ Exit Partner Preview' : '👁️ Preview What My Partner Sees'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setViewScope('household');
+                  setActiveTab('dashboard');
+                }}
+                className="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all"
+              >
+                Open Family Room →
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Create a shared family room to plan together with your partner, calculate realistic joint savings capacity, and track joint goals without losing financial privacy.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setViewScope('household');
+                setActiveTab('dashboard');
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-xs font-bold rounded-xl shadow-xs hover:opacity-95 transition-all"
+            >
+              Setup Family Room →
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 8. Theme & Appearance Selector (Moved near bottom above data management) */}
       <div className="p-5 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-card space-y-3">
         <div className="flex items-center gap-2">
           <Sun className="w-4 h-4 text-amber-500" />

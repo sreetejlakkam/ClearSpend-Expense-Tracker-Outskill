@@ -122,6 +122,29 @@ graph TD
 - Reactive alert banners across Overview and Ledger.
 - One-click actions: "Merge Duplicate", "Keep Both", or "Dismiss".
 
+### 3.9 Family Finance AI & Two-Layer Privacy (Phase 8 Flagship)
+ClearSpend's Family Finance system enables couples and housemates to build joint wealth together without sacrificing personal financial privacy.
+
+1. **Two-Layer Privacy Architecture:**
+   - **Layer A (Summary Sharing):** Default ON. Computes and shares monthly income, expense, and savings totals only. Line items, categories, merchants, and dates are completely hidden. If turned off, totals are returned as `null` with explicit `is_estimated = true` flags (never under-reporting).
+   - **Layer B (Per-Transaction Visibility):** Set on each transaction individually:
+     - `Private` (Default): Hidden from partner entirely.
+     - `Amount Only`: Partner sees ₹480 in Groceries, but merchant name and notes are masked.
+     - `Shared`: Full details visible in the shared Family Room (ideal for joint rent, bills, groceries).
+2. **The Golden Rule & Column Masking:**
+   - Enforced at the database and data-access layer via Postgres column-masking views (`household_ledger`) and RLS policies. UI-only privacy is never used.
+3. **Shared Envelopes & Joint Goals:**
+   - Track joint household budgets (Rent, Groceries, Utilities) and dual-contributor savings goals (e.g. "2BHK Down Payment", "Annual Vacation").
+   - Quick deposit modal with celebratory confetti.
+4. **Contribution Fairness & Settle-Up:**
+   - Compares 50/50 equal splits with income-proportional splits ($60/40$) and provides gentle settle-up calculations for who has covered more fixed costs.
+5. **Family AI Copilot & 0-Sentinel Leak Privacy:**
+   - Context builder reads exclusively from Layer A summaries and masked views.
+   - Answers joint affordability, savings capacity, 12% CAGR dual SIP projections, and down payment timelines with rigorous mathematical formulas.
+6. **Partner Preview Mode & Safety Exit:**
+   - 1-click "Preview What My Partner Sees" verifies partner view in real-time.
+   - Safe household exit unlinks transactions retroactively back to 100% private.
+
 ---
 
 ## 🔒 4. Privacy, Security & Data Ownership
@@ -130,7 +153,7 @@ graph TD
 - **Row Level Security (RLS):** Supabase Postgres policies isolate data so users can only ever access their own financial records.
 - **Zero Fabrication Guarantee:** Discriminated union parsing ensures missing data prompts the user rather than inventing numbers.
 - **One-Click Data Purge:** "Delete all my data and start fresh" feature allows instant permanent removal of all local and cloud records.
-- **Complete Portability:** Export your entire ledger to CSV at any time.
+- **Complete Portability:** Export your entire ledger to CSV at any time or download full Family JSON data.
 
 ---
 

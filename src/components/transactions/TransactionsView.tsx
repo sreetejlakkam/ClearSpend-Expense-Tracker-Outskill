@@ -37,6 +37,8 @@ export const TransactionsView: React.FC = () => {
     bulkDeleteTransactions,
     setActiveTab,
     pendingReviewCount,
+    isPartnerPreview,
+    setIsPartnerPreview,
   } = useStore();
 
 
@@ -221,6 +223,29 @@ export const TransactionsView: React.FC = () => {
             </div>
           </div>
           <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-xl">Review & Fix →</span>
+        </div>
+      )}
+
+      {/* Phase 8: Partner View Preview Banner */}
+      {isPartnerPreview && (
+        <div className="p-3.5 bg-amber-500/15 border border-amber-500/40 rounded-2xl sm:rounded-3xl flex items-center justify-between gap-3 text-xs text-amber-950 dark:text-amber-200 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">👁️</span>
+            <div>
+              <p className="font-extrabold text-xs sm:text-sm leading-tight">
+                Partner Preview Mode Active
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                Viewing ledger strictly as your partner sees it. Private entries are hidden, and amount-only merchants are masked.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsPartnerPreview(false)}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shrink-0 shadow-xs"
+          >
+            Exit Preview
+          </button>
         </div>
       )}
 
