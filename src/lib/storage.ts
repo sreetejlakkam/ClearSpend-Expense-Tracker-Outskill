@@ -620,3 +620,5 @@ export function getInitialDemoState(userId: string = 'demo_user_1') {
     demoHousehold,
   };
 }
+
+export const demoData = getInitialDemoState();

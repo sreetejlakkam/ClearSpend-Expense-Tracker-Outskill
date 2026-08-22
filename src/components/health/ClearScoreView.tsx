@@ -24,6 +24,7 @@ export const ClearScoreView: React.FC = () => {
     transactions,
     budgets,
     selectedMonthStr,
+    openSimulator,
     addToast,
   } = useStore();
   const { t, language } = useTranslation();
@@ -852,23 +853,41 @@ export const ClearScoreView: React.FC = () => {
       </div>
 
       {/* 6. AI Strategic Prescriptions with 1-Click Simulation */}
-      <div className="p-5 sm:p-6 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+      <div className="p-5 sm:p-6 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
               <Sparkles className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-              {t('clearscore.prescriptions_title', 'AI Financial Prescriptions')}
-            </h3>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                {t('clearscore.prescriptions_title', 'AI Financial Prescriptions')}
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Actionable roadmap to optimize liquidity, compounding, and ClearScore rating.
+              </p>
+            </div>
           </div>
-          <span className="text-[10px] text-slate-400 font-bold">
-            1-Tap Actions to Boost Score
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => openSimulator('compounding')}
+              className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-extrabold rounded-xl flex items-center gap-1 transition-all"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Wealth Simulator</span>
+            </button>
+            <button
+              onClick={() => openSimulator('budget')}
+              className="px-3 py-1.5 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-[11px] font-extrabold rounded-xl flex items-center gap-1 transition-all"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Budget Simulator</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Card 1 */}
+          {/* Card 1: Emergency Runway */}
           <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex flex-col justify-between gap-3">
             <div className="flex items-start gap-3">
               <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
@@ -881,22 +900,30 @@ export const ClearScoreView: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setExtraRunwayBuffer(25000);
-                addToast({
-                  title: 'Playground Configured',
-                  message: 'Simulating +₹25,000 Emergency Buffer top-up.',
-                  type: 'success',
-                });
-              }}
-              className="self-end text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-            >
-              <Zap className="w-3 h-3" /> Test in Simulator
-            </button>
+            <div className="flex items-center justify-between pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+              <button
+                onClick={() => {
+                  setExtraRunwayBuffer(25000);
+                  addToast({
+                    title: 'Playground Configured',
+                    message: 'Simulating +₹25,000 Emergency Buffer top-up.',
+                    type: 'success',
+                  });
+                }}
+                className="text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center gap-1"
+              >
+                <Zap className="w-3 h-3" /> Test in Playground
+              </button>
+              <button
+                onClick={() => openSimulator('budget')}
+                className="text-[11px] font-extrabold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+              >
+                <span>Open in Budget Simulator ➔</span>
+              </button>
+            </div>
           </div>
 
-          {/* Card 2 */}
+          {/* Card 2: SIP Compounding */}
           <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex flex-col justify-between gap-3">
             <div className="flex items-start gap-3">
               <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
@@ -909,19 +936,27 @@ export const ClearScoreView: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setExpenseCutAmount(2000);
-                addToast({
-                  title: 'Playground Configured',
-                  message: 'Simulating -₹2,000 Discretionary spend trim.',
-                  type: 'success',
-                });
-              }}
-              className="self-end text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-            >
-              <Zap className="w-3 h-3" /> Test in Simulator
-            </button>
+            <div className="flex items-center justify-between pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+              <button
+                onClick={() => {
+                  setExpenseCutAmount(2000);
+                  addToast({
+                    title: 'Playground Configured',
+                    message: 'Simulating -₹2,000 Discretionary spend trim.',
+                    type: 'success',
+                  });
+                }}
+                className="text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center gap-1"
+              >
+                <Zap className="w-3 h-3" /> Test in Playground
+              </button>
+              <button
+                onClick={() => openSimulator('compounding')}
+                className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              >
+                <span>Open in Wealth Simulator ➔</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

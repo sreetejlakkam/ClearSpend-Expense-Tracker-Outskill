@@ -184,6 +184,9 @@ interface StoreContextType {
   setEditingTransaction: (txn: Transaction | null) => void;
   activeCategoryFilter: string | null;
   setActiveCategoryFilter: (catId: string | null) => void;
+  budgetSubTab: 'envelopes' | 'infographics' | 'subscriptions' | 'goals' | 'simulator';
+  setBudgetSubTab: (tab: 'envelopes' | 'infographics' | 'subscriptions' | 'goals' | 'simulator') => void;
+  openSimulator: (type?: 'compounding' | 'budget') => void;
 
   // Phase 8: Family Finance AI
   viewScope: ViewScope;
@@ -268,15 +271,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     if (saved) {
-      const parsed: Transaction[] = JSON.parse(saved);
+      let parsed: Transaction[] = JSON.parse(saved);
       // Auto-replenish partner transactions across 5 months for joint Family Room
-      if (isDemoSession && !parsed.some((t) => t.user_id === 'user_priya_demo')) {
-        const partnerTxns = demoData.transactions.filter((t) => t.user_id === 'user_priya_demo');
-        return [...parsed, ...partnerTxns];
+      const partnerTxns = demoData.transactions.filter((t) => t.user_id === 'user_priya_demo');
+      const missingPartnerTxns = partnerTxns.filter((pt) => !parsed.some((t) => t.id === pt.id));
+      if (missingPartnerTxns.length > 0) {
+        parsed = [...parsed, ...missingPartnerTxns];
       }
+      // Tag shared household expenses so Family Room ledger is populated
+      parsed = parsed.map((t) => {
+        if (!t.household_id && (t.category_id === 'cat_rent' || t.category_id === 'cat_bills' || t.category_id === 'cat_groceries')) {
+          return { ...t, household_id: 'hh_sharma_demo', visibility: (t.visibility || 'shared') as any };
+        }
+        return t;
+      });
       return parsed;
     }
-    return isDemoSession ? demoData.transactions : [];
+    return demoData.transactions;
   });
 
   const [budgets, setBudgets] = useState<Budget[]>(() => {
@@ -312,33 +323,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [household, setHousehold] = useState<Household | null>(() => {
     const saved = getLocalHousehold();
     if (saved) return saved;
-    return isDemoSession ? (demoData as any).demoHousehold?.household || null : null;
+    return (demoData as any).demoHousehold?.household || null;
   });
 
   const [householdMembers, setHouseholdMembers] = useState<HouseholdMember[]>(() => {
     const saved = getLocalHouseholdMembers();
     if (saved.length > 0) return saved;
-    return isDemoSession ? (demoData as any).demoHousehold?.members || [] : [];
+    return (demoData as any).demoHousehold?.members || [];
   });
 
   const [householdBudgets, setHouseholdBudgets] = useState<HouseholdBudget[]>(() => {
     const saved = getLocalHouseholdBudgets();
     if (saved.length > 0) return saved;
-    return isDemoSession ? (demoData as any).demoHousehold?.budgets || [] : [];
+    return (demoData as any).demoHousehold?.budgets || [];
   });
 
   const [householdGoals, setHouseholdGoals] = useState<HouseholdGoal[]>(() => {
     const saved = getLocalHouseholdGoals();
     if (saved.length > 0) return saved;
-    return isDemoSession ? (demoData as any).demoHousehold?.goals || [] : [];
+    return (demoData as any).demoHousehold?.goals || [];
   });
 
   const [entitlements, setEntitlements] = useState<Entitlement[]>(() => {
     const saved = getLocalEntitlements();
     if (saved.length > 0) return saved;
-    return isDemoSession
-      ? [{ id: 'ent_demo', household_id: 'hh_sharma_demo', feature: 'family_premium', granted_at: new Date().toISOString(), source: 'demo' }]
-      : [];
+    return [{ id: 'ent_demo', household_id: 'hh_sharma_demo', feature: 'family_premium', granted_at: new Date().toISOString(), source: 'demo' }];
   });
 
   const [householdAuditLog] = useState<HouseholdAuditLog[]>(() => {
@@ -349,6 +358,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
+  const [budgetSubTab, setBudgetSubTab] = useState<'envelopes' | 'infographics' | 'subscriptions' | 'goals' | 'simulator'>('envelopes');
+
+  const openSimulator = (type: 'compounding' | 'budget' = 'budget') => {
+    if (type === 'compounding') {
+      setActiveTab('compounding');
+    } else {
+      setActiveTab('budgets');
+      setBudgetSubTab('simulator');
+    }
+  };
 
   // Modals & Sheets
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -1386,6 +1405,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setEditingTransaction,
         activeCategoryFilter,
         setActiveCategoryFilter,
+        budgetSubTab,
+        setBudgetSubTab,
+        openSimulator,
         viewScope,
         setViewScope,
         household,

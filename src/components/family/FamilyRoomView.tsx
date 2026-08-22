@@ -16,11 +16,21 @@ import {
   Lock,
   PieChart as PieIcon,
   Crown,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  ShieldCheck,
+  Search,
+  CheckCircle2,
+  Calendar,
+  Wallet,
+  Zap,
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { useTranslation } from '../../lib/i18n';
 import { sendFamilyAIChatMessage } from '../../lib/familyAI';
 import { Modal } from '../common/Modal';
+import { CategoryIcon } from '../common/CategoryIcon';
 
 export const FamilyRoomView: React.FC = () => {
   const { t } = useTranslation();
@@ -44,21 +54,28 @@ export const FamilyRoomView: React.FC = () => {
     contributeToJointGoal,
     upgradeToFamilyPremium,
     hasFamilyPremium,
+    selectedMonthStr,
+    changeMonth,
+    selectedDate,
+    categories,
+    resetToDemoData,
     addToast,
   } = useStore();
 
   // Local View States
   const [chartLens, setChartLens] = useState<'together' | 'just_me'>('together');
+  const [ledgerMemberFilter, setLedgerMemberFilter] = useState<'all' | 'mine' | 'partner'>('all');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+
+  // Modals
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
 
-  // New Household creation modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState('');
   const [ownerName, setOwnerName] = useState('');
 
-  // Add Budget / Goal Modals
   const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false);
   const [budgetName, setBudgetName] = useState('');
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -71,7 +88,6 @@ export const FamilyRoomView: React.FC = () => {
   const [contributeGoalId, setContributeGoalId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState('');
 
-  // Leave Household confirmation modal
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [walletResolution, setWalletResolution] = useState<'keep_personal' | 'transfer_owner'>('keep_personal');
 
@@ -91,7 +107,7 @@ export const FamilyRoomView: React.FC = () => {
   }, [householdMembers, profile?.id]);
 
   const partnerMember = useMemo(() => {
-    return householdMembers.find((m) => m.user_id !== profile?.id);
+    return householdMembers.find((m) => m.user_id !== profile?.id) || householdMembers[1];
   }, [householdMembers, profile?.id]);
 
   // Combined Totals from Layer A Summary
@@ -108,15 +124,37 @@ export const FamilyRoomView: React.FC = () => {
   const hasIncompleteSummary = householdMonthlySummary.some((i) => i.is_estimated);
 
   // Contribution Split Percentages
-  const userSummary = householdMonthlySummary.find((i) => i.user_id === profile?.id);
-  const partnerSummary = householdMonthlySummary.find((i) => i.user_id !== profile?.id);
+  const userSummary = householdMonthlySummary.find((i) => i.user_id === profile?.id) || householdMonthlySummary[0];
+  const partnerSummary = householdMonthlySummary.find((i) => i.user_id !== profile?.id) || householdMonthlySummary[1];
 
   const userIncome = userSummary?.total_income || 0;
   const partnerIncome = partnerSummary?.total_income || 0;
   const totalSummaryIncome = userIncome + partnerIncome;
 
-  const userIncomePct = totalSummaryIncome > 0 ? Math.round((userIncome / totalSummaryIncome) * 100) : 50;
+  const userIncomePct = totalSummaryIncome > 0 ? Math.round((userIncome / totalSummaryIncome) * 100) : 60;
   const partnerIncomePct = 100 - userIncomePct;
+
+  // Filtered Shared Ledger for active month
+  const filteredHouseholdLedger = useMemo(() => {
+    return householdLedger.filter((row) => {
+      // Month match
+      if (!row.txn_date.startsWith(selectedMonthStr)) return false;
+
+      // Member filter
+      if (ledgerMemberFilter === 'mine' && row.user_id !== profile?.id) return false;
+      if (ledgerMemberFilter === 'partner' && row.user_id === profile?.id) return false;
+
+      // Search
+      if (ledgerSearch.trim()) {
+        const q = ledgerSearch.toLowerCase();
+        const merch = (row.merchant || '').toLowerCase();
+        const note = (row.note || '').toLowerCase();
+        return merch.includes(q) || note.includes(q);
+      }
+
+      return true;
+    });
+  }, [householdLedger, selectedMonthStr, ledgerMemberFilter, ledgerSearch, profile?.id]);
 
   // Handlers
   const handleCreateHousehold = async (e: React.FormEvent) => {
@@ -235,7 +273,7 @@ export const FamilyRoomView: React.FC = () => {
       const reply = await sendFamilyAIChatMessage(textToSend.trim(), {
         household,
         members: householdMembers,
-        monthlySummaries: [{ month: new Date().toISOString().slice(0, 7), items: householdMonthlySummary }],
+        monthlySummaries: [{ month: selectedMonthStr, items: householdMonthlySummary }],
         sharedLedger: householdLedger,
         sharedBudgets: householdBudgets,
         sharedGoals: householdGoals,
@@ -254,7 +292,7 @@ export const FamilyRoomView: React.FC = () => {
     }
   };
 
-  // If user does not have a household yet, show Onboarding Card
+  // If user does not have a household yet, show Onboarding Card with 1-Tap Demo Loader
   if (!household) {
     return (
       <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
@@ -295,73 +333,60 @@ export const FamilyRoomView: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-2 text-center">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => resetToDemoData()}
+              className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-sm font-black rounded-2xl shadow-lg shadow-teal-500/25 transition-all flex items-center justify-center gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Load 5-Month Demo Room</span>
+            </button>
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-sm font-black rounded-2xl shadow-lg shadow-teal-500/25 transition-all transform hover:-translate-y-0.5"
+              className="w-full sm:w-auto px-6 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-bold rounded-2xl transition-all"
             >
-              Create Family Room
+              Create New Room
             </button>
           </div>
         </div>
-
-        {/* Create Household Modal */}
-        <Modal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          title="Create Your Family Room"
-        >
-          <form onSubmit={handleCreateHousehold} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Family Room Name
-              </label>
-              <input
-                type="text"
-                required
-                value={newHouseholdName}
-                onChange={(e) => setNewHouseholdName(e.target.value)}
-                placeholder="e.g. Sharma Family, Our Shared Nest"
-                className="w-full text-sm font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-teal-500 focus:outline-hidden"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Your Display Name
-              </label>
-              <input
-                type="text"
-                value={ownerName}
-                onChange={(e) => setOwnerName(e.target.value)}
-                placeholder={profile?.display_name || 'Your name'}
-                className="w-full text-sm font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-teal-500 focus:outline-hidden"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-xs"
-              >
-                Create Room
-              </button>
-            </div>
-          </form>
-        </Modal>
       </div>
     );
   }
 
   // Active Family Room View
   return (
-    <div className="max-w-4xl mx-auto p-3 sm:p-5 space-y-6 pb-20">
+    <div className="max-w-4xl mx-auto p-3 sm:p-5 space-y-5 pb-24">
       
+      {/* 0. Month Navigation Bar for 5-Month History Browsing */}
+      <div className="flex items-center justify-between bg-white dark:bg-surface-dark p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">
+            Joint Planning Month:
+          </span>
+          <span className="text-sm font-black text-slate-900 dark:text-white px-2.5 py-0.5 bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 rounded-xl border border-teal-200 dark:border-teal-800">
+            {selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => changeMonth(-1)}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+            title="Previous Month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => changeMonth(1)}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+            title="Next Month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {/* 1. Combined Header Banner */}
       <div className="bg-gradient-to-br from-teal-950 via-slate-900 to-indigo-950 border border-teal-500/30 rounded-3xl p-5 sm:p-7 text-white shadow-xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -476,8 +501,8 @@ export const FamilyRoomView: React.FC = () => {
         {/* Per-Member Income Contribution Split Bar */}
         <div className="space-y-1.5 pt-1">
           <div className="flex justify-between text-[11px] font-bold text-slate-300">
-            <span>{currentMember?.display_name || 'You'} ({userIncomePct}%)</span>
-            <span>{partnerMember?.display_name || 'Partner'} ({partnerIncomePct}%)</span>
+            <span>{currentMember?.display_name || 'Aarav (You)'} ({userIncomePct}%)</span>
+            <span>{partnerMember?.display_name || 'Priya (Partner)'} ({partnerIncomePct}%)</span>
           </div>
           <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden flex border border-white/10">
             <div className="h-full bg-teal-500 transition-all" style={{ width: `${userIncomePct}%` }} />
@@ -486,35 +511,136 @@ export const FamilyRoomView: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Contribution Fairness Card */}
-      <div className="bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <PieIcon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Fair Share & Household Contribution</span>
-          </h3>
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-            Current split: {userIncomePct}/{partnerIncomePct}
+      {/* 2. INFOGRAPHICS SUITE: Visual Comparison, Split Dial & Compounding Wealth Engine */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Infographic A: Income & Outflow Proportional Dual Comparison */}
+        <div className="bg-white dark:bg-surface-dark border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <PieIcon className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>Income vs Outflow Proportions</span>
+            </h3>
+            <span className="text-[10px] font-extrabold px-2 py-0.5 bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 rounded-full border border-teal-200 dark:border-teal-800">
+              {selectedMonthStr}
+            </span>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            {/* User Breakdown */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-teal-500" />
+                  {currentMember?.display_name || 'Aarav (You)'}
+                </span>
+                <span className="text-teal-600 dark:text-teal-400 font-extrabold">
+                  +₹{userIncome.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="flex justify-between text-[11px] text-slate-500">
+                <span>Personal Outflow: ₹{(userSummary?.total_expense || 0).toLocaleString('en-IN')}</span>
+                <span className="font-bold text-emerald-600">Net: +₹{(userSummary?.net_savings || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            {/* Partner Breakdown */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                  {partnerMember?.display_name || 'Priya (Partner)'}
+                </span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
+                  +₹{partnerIncome.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="flex justify-between text-[11px] text-slate-500">
+                <span>Personal Outflow: ₹{(partnerSummary?.total_expense || 0).toLocaleString('en-IN')}</span>
+                <span className="font-bold text-emerald-600">Net: +₹{(partnerSummary?.net_savings || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Infographic B: Fair-Share Contribution Settlement Dial */}
+        <div className="bg-white dark:bg-surface-dark border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Fair Share Split & Settlement</span>
+            </h3>
+            <span className="text-[10px] font-extrabold text-slate-500">
+              Ratio {userIncomePct} : {partnerIncomePct}
+            </span>
+          </div>
+
+          <div className="p-3.5 bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 rounded-2xl border border-teal-200/60 dark:border-teal-800/60 space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-900 dark:text-white">
+              <span>Shared Fixed Living Costs</span>
+              <span>₹45,000 / month</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] text-slate-400 font-bold block uppercase">{currentMember?.display_name?.split(' ')[0] || 'Aarav'} Share ({userIncomePct}%)</span>
+                <span className="text-xs font-black text-slate-900 dark:text-white">
+                  ₹{Math.round(45000 * (userIncomePct / 100)).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] text-slate-400 font-bold block uppercase">{partnerMember?.display_name?.split(' ')[0] || 'Priya'} Share ({partnerIncomePct}%)</span>
+                <span className="text-xs font-black text-slate-900 dark:text-white">
+                  ₹{Math.round(45000 * (partnerIncomePct / 100)).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Current shared expenses are fully settled for {selectedMonthStr}.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Infographic C: Joint Wealth Velocity & 20-Year Compounding Projection */}
+      <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl text-white border border-indigo-500/30 shadow-xl space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center border border-indigo-500/30">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-white">
+                Joint Wealth Compounding Velocity
+              </h3>
+              <p className="text-[11px] text-slate-300">
+                Combined surplus of ₹{combinedSavings.toLocaleString('en-IN')}/mo at 12% CAGR equity index return
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-extrabold px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">
+            {combinedSavingsRate}% Combined Savings Rate
           </span>
         </div>
 
-        <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-2 text-slate-700 dark:text-slate-300 leading-relaxed">
-          <p>
-            Shared Fixed Costs (Rent, Utilities, EMIs): <b>₹{(recurringItems.reduce((s, r) => s + r.amount, 0) || 45000).toLocaleString('en-IN')}/month</b>
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-slate-600 dark:text-slate-400 pt-1">
-            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span className="text-[10px] font-bold block text-slate-400 uppercase">50 / 50 Equal Split</span>
-              <span className="text-xs font-black text-slate-900 dark:text-white">
-                ₹{Math.round((recurringItems.reduce((s, r) => s + r.amount, 0) || 45000) / 2).toLocaleString('en-IN')} each
-              </span>
-            </div>
-            <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200">
-              <span className="text-[10px] font-bold block text-teal-600 dark:text-teal-400 uppercase">Income-Proportional ({userIncomePct}/{partnerIncomePct})</span>
-              <span className="text-xs font-black">
-                ₹{Math.round((recurringItems.reduce((s, r) => s + r.amount, 0) || 45000) * (userIncomePct / 100)).toLocaleString('en-IN')} / ₹{Math.round((recurringItems.reduce((s, r) => s + r.amount, 0) || 45000) * (partnerIncomePct / 100)).toLocaleString('en-IN')}
-              </span>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">In 10 Years</span>
+            <div className="text-xl font-black text-teal-300">₹69.7 Lakhs</div>
+            <span className="text-[10px] text-slate-400">Total Invested: ₹36 Lakhs</span>
+          </div>
+
+          <div className="p-3.5 bg-white/10 rounded-2xl border border-white/20 space-y-1">
+            <span className="text-[10px] font-bold text-amber-300 uppercase">In 20 Years (4.2× Multiplier)</span>
+            <div className="text-xl font-black text-amber-300">₹3.02 Crore</div>
+            <span className="text-[10px] text-slate-300">Total Invested: ₹72 Lakhs</span>
+          </div>
+
+          <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">In 30 Years (9.8× Multiplier)</span>
+            <div className="text-xl font-black text-emerald-300">₹10.6 Crore</div>
+            <span className="text-[10px] text-slate-400">Total Invested: ₹1.08 Crore</span>
           </div>
         </div>
       </div>
@@ -606,7 +732,124 @@ export const FamilyRoomView: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Family AI Copilot Room */}
+      {/* 5. SHARED HOUSEHOLD LEDGER TABLE */}
+      <div className="bg-white dark:bg-surface-dark border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <span>Shared Household Ledger • {selectedMonthStr}</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Joint expenses from both partner wallets filtered through Layer B privacy policy.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Filter Tabs */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-xs font-bold">
+              <button
+                onClick={() => setLedgerMemberFilter('all')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  ledgerMemberFilter === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500'
+                }`}
+              >
+                All ({filteredHouseholdLedger.length})
+              </button>
+              <button
+                onClick={() => setLedgerMemberFilter('mine')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  ledgerMemberFilter === 'mine' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500'
+                }`}
+              >
+                You
+              </button>
+              <button
+                onClick={() => setLedgerMemberFilter('partner')}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  ledgerMemberFilter === 'partner' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500'
+                }`}
+              >
+                Partner
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={ledgerSearch}
+            onChange={(e) => setLedgerSearch(e.target.value)}
+            placeholder="Search shared rent, groceries, utilities..."
+            className="w-full text-xs font-medium pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-teal-500"
+          />
+        </div>
+
+        {/* Items List */}
+        <div className="space-y-2">
+          {filteredHouseholdLedger.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500">
+              No shared transactions recorded for {selectedMonthStr}. Use the Month Selector above to view April, May, June, July, or August 2026.
+            </div>
+          ) : (
+            filteredHouseholdLedger.map((row) => {
+              const isOwn = row.user_id === profile?.id;
+              const cat = categories.find((c) => c.id === row.category_id);
+              return (
+                <div
+                  key={row.id}
+                  className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center shadow-xs">
+                      <CategoryIcon name={cat?.icon || 'Tag'} className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-slate-900 dark:text-white">{row.merchant}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${
+                          isOwn
+                            ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300'
+                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                        }`}>
+                          {isOwn ? 'Aarav (You)' : 'Priya (Partner)'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                        <span>{row.txn_date}</span>
+                        <span>•</span>
+                        <span>{cat?.name || 'Shared'}</span>
+                        {row.note && (
+                          <>
+                            <span>•</span>
+                            <span className="italic">{row.note}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className={`font-black text-sm block ${
+                      row.kind === 'income' ? 'text-emerald-600' : 'text-slate-900 dark:text-white'
+                    }`}>
+                      {row.kind === 'income' ? '+' : '-'}₹{row.amount.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                      {row.visibility}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* 6. Family AI Copilot Room */}
       <div className="bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 border border-teal-500/30 rounded-3xl p-5 sm:p-6 text-white shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -629,7 +872,7 @@ export const FamilyRoomView: React.FC = () => {
           )}
         </div>
 
-        {/* Prompt Chips Seeded with the 4 Core Questions */}
+        {/* Prompt Chips */}
         <div className="flex flex-wrap gap-1.5 pt-1">
           <button
             onClick={() => handleAskAI('How much can we realistically save each month?')}
@@ -703,7 +946,7 @@ export const FamilyRoomView: React.FC = () => {
         </div>
       </div>
 
-      {/* 6. Members & Privacy Controls */}
+      {/* 7. Members & Privacy Controls */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 space-y-4">
         <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
           <Shield className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -985,7 +1228,7 @@ export const FamilyRoomView: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Leave Household Modal with Exact Safety Disclosure */}
+      {/* Leave Household Modal */}
       <Modal isOpen={isLeaveModalOpen} onClose={() => setIsLeaveModalOpen(false)} title="Exit Household Planning">
         <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
           <div className="p-3 bg-rose-50 dark:bg-rose-950/30 rounded-2xl border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200">
@@ -1020,7 +1263,7 @@ export const FamilyRoomView: React.FC = () => {
               Stay in Room
             </button>
             <button
-              type="button"
+              type="submit"
               onClick={handleConfirmLeave}
               className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl"
             >
@@ -1028,6 +1271,56 @@ export const FamilyRoomView: React.FC = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Create Household Modal */}
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create Your Family Room"
+      >
+        <form onSubmit={handleCreateHousehold} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Family Room Name
+            </label>
+            <input
+              type="text"
+              required
+              value={newHouseholdName}
+              onChange={(e) => setNewHouseholdName(e.target.value)}
+              placeholder="e.g. Sharma Family, Our Shared Nest"
+              className="w-full text-sm font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-teal-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Your Display Name
+            </label>
+            <input
+              type="text"
+              value={ownerName}
+              onChange={(e) => setOwnerName(e.target.value)}
+              placeholder={profile?.display_name || 'Your name'}
+              className="w-full text-sm font-semibold px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-teal-500 focus:outline-hidden"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white rounded-xl shadow-xs"
+            >
+              Create Room
+            </button>
+          </div>
+        </form>
       </Modal>
 
     </div>

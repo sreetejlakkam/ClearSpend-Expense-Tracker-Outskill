@@ -46,11 +46,12 @@ export const BudgetsView: React.FC = () => {
     updateBudget,
     deleteBudget,
     getCategory3MonthAverage,
+    budgetSubTab: activeSubTab,
+    setBudgetSubTab: setActiveSubTab,
   } = useStore();
 
   const { t } = useTranslation();
 
-  const [activeSubTab, setActiveSubTab] = useState<'envelopes' | 'infographics' | 'subscriptions' | 'goals' | 'simulator'>('envelopes');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [selectedCatId, setSelectedCatId] = useState<string>('');

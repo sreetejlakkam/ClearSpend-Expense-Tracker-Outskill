@@ -119,13 +119,12 @@ export function addLocalAuditEntry(entry: HouseholdAuditLog): void {
  */
 export function calculateHouseholdMonthlySummary(
   householdId: string,
-  monthStartStr: string, // YYYY-MM-01
+  monthStartStr: string, // YYYY-MM-01 or YYYY-MM
   members: HouseholdMember[],
   transactions: Transaction[]
 ): HouseholdMonthlySummaryItem[] {
   const activeMembers = members.filter((m) => m.household_id === householdId && m.status === 'active');
-  const monthStart = new Date(monthStartStr);
-  const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+  const targetMonthPrefix = monthStartStr.slice(0, 7); // "YYYY-MM"
 
   return activeMembers.map((member) => {
     if (!member.share_summary) {
@@ -141,8 +140,7 @@ export function calculateHouseholdMonthlySummary(
 
     const memberTxns = transactions.filter((t) => {
       if (t.user_id !== member.user_id || t.status !== 'active') return false;
-      const tDate = new Date(t.txn_date);
-      return tDate >= monthStart && tDate < nextMonth;
+      return t.txn_date.startsWith(targetMonthPrefix);
     });
 
     const total_income = memberTxns
