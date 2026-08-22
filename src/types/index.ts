@@ -123,3 +123,35 @@ export interface AnomalyItem {
   medianAmount: number;
   multiplier: number;
 }
+
+export interface RecurringItem {
+  id: string;
+  user_id: string;
+  merchant: string;
+  category_id: string;
+  amount: number;
+  frequency: 'monthly' | 'yearly' | 'weekly';
+  due_day: number;
+  wallet_id?: string;
+  is_active: boolean;
+  last_charged_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  title: string;
+  target_amount: number;
+  current_amount: number;
+  target_date: string;
+  category?: string;
+  icon?: string;
+  color?: string;
+  is_paused: boolean;
+  monthly_contribution: number;
+  created_at: string;
+  updated_at: string;
+}
+

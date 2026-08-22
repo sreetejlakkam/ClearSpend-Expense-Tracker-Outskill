@@ -13,22 +13,26 @@ import {
   Bot,
   Eye,
   EyeOff,
-  Compass
+  Compass,
+  Send
 } from 'lucide-react';
 
 export const AuthView: React.FC = () => {
-  const { login, signup, loginAsDemo } = useStore();
+  const { login, signup, signInWithMagicLink, loginAsDemo } = useStore();
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'demo'>('signin');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setInfoMessage(null);
     if (!email.trim()) return;
 
     setLoading(true);
@@ -49,9 +53,28 @@ export const AuthView: React.FC = () => {
         await login(email.trim(), password, name.trim() || undefined);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Authentication failed. Please try again.');
+      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMagicLink = async () => {
+    setErrorMessage(null);
+    setInfoMessage(null);
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address first.');
+      return;
+    }
+
+    setMagicLinkLoading(true);
+    try {
+      await signInWithMagicLink(email.trim());
+      setInfoMessage(`Magic sign-in link dispatched to ${email.trim()}! Please check your inbox.`);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to send magic link. Please try again.');
+    } finally {
+      setMagicLinkLoading(false);
     }
   };
 
@@ -106,7 +129,7 @@ export const AuthView: React.FC = () => {
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700">
             <button
               type="button"
-              onClick={() => { setAuthMode('signin'); setErrorMessage(null); }}
+              onClick={() => { setAuthMode('signin'); setErrorMessage(null); setInfoMessage(null); }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'signin'
                   ? 'bg-white dark:bg-surface-dark text-slate-900 dark:text-white shadow-xs'
@@ -117,7 +140,7 @@ export const AuthView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setAuthMode('signup'); setErrorMessage(null); }}
+              onClick={() => { setAuthMode('signup'); setErrorMessage(null); setInfoMessage(null); }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'signup'
                   ? 'bg-white dark:bg-surface-dark text-slate-900 dark:text-white shadow-xs'
@@ -128,7 +151,7 @@ export const AuthView: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setAuthMode('demo'); setErrorMessage(null); }}
+              onClick={() => { setAuthMode('demo'); setErrorMessage(null); setInfoMessage(null); }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${
                 authMode === 'demo'
                   ? 'bg-emerald-600 text-white shadow-xs'
@@ -142,6 +165,12 @@ export const AuthView: React.FC = () => {
           {errorMessage && (
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs font-bold text-rose-700 dark:text-rose-300">
               {errorMessage}
+            </div>
+          )}
+
+          {infoMessage && (
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+              {infoMessage}
             </div>
           )}
 
@@ -226,15 +255,30 @@ export const AuthView: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || magicLinkLoading}
                 className="w-full py-2.5 px-4 bg-gradient-to-r from-brand-700 to-indigo-600 hover:from-brand-800 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-brand-700/25 flex items-center justify-center gap-1.5 transition-all active:scale-98 disabled:opacity-60"
               >
                 <span>{loading ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In with Email'}</span>
                 <ArrowRight className="w-3.5 h-3.5 stroke-[2.5px]" />
               </button>
 
+              {/* Passwordless Magic Link Option */}
+              {authMode === 'signin' && (
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={handleMagicLink}
+                    disabled={magicLinkLoading || loading}
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Send className="w-3 h-3" />
+                    <span>{magicLinkLoading ? 'Sending magic link…' : 'Or email me a passwordless Magic Link (OTP)'}</span>
+                  </button>
+                </div>
+              )}
+
               {/* Local Mode exploration button */}
-              <div className="pt-2">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={loginAsDemo}

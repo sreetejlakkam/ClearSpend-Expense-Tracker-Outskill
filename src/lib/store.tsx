@@ -10,6 +10,21 @@ import {
   Transaction,
   Wallet,
 } from '../types';
+import {
+  fetchUserData,
+  removeBudget,
+  removeCategory,
+  removeTransaction,
+  removeWallet,
+  saveBudget,
+  saveCategory,
+  saveProfile,
+  saveRule,
+  saveTransaction,
+  saveWallet,
+  subscribeToUserChanges,
+  syncOutbox,
+} from './db';
 import { generateAIInsights, scanAnomalies, scanDuplicates } from './insights';
 import { generateFingerprint, parseTransactionInput, ParseOutcome } from './parser';
 import { DEFAULT_CATEGORIES, getInitialDemoState } from './storage';
@@ -32,6 +47,22 @@ export interface ManualPrefill {
   hint?: string;
 }
 
+function mapSupabaseAuthError(msg: string): string {
+  if (/invalid login credentials/i.test(msg)) {
+    return 'Incorrect email or password. Please try again.';
+  }
+  if (/user already registered/i.test(msg)) {
+    return 'An account with this email already exists. Please Sign In.';
+  }
+  if (/rate limit/i.test(msg)) {
+    return 'Too many attempts. Please wait a few moments and try again.';
+  }
+  if (/email not confirmed/i.test(msg)) {
+    return 'Please check your inbox to confirm your email before signing in.';
+  }
+  return msg;
+}
+
 interface StoreContextType {
   // Auth & Profile
   profile: Profile | null;
@@ -41,6 +72,7 @@ interface StoreContextType {
   login: (email: string, password?: string, name?: string) => Promise<void>;
   loginAsDemo: () => void;
   signup: (email: string, name: string, password?: string) => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   completeOnboarding: (currency: string, walletName: string, budgetCategory?: string, budgetAmount?: number) => Promise<void>;
@@ -137,10 +169,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Demo session state
   const [isDemoSession, setIsDemoSession] = useState<boolean>(() => {
     const isDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO);
-    // If not set at all, check if we have a saved profile
     if (isDemo === null) {
       const hasProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
-      return !hasProfile; // If no profile, start clean until user signs in or picks demo
+      return !hasProfile;
     }
     return isDemo === 'true';
   });
@@ -301,6 +332,95 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [profile?.id, selectedMonthStr]);
 
+  // Supabase Session Restore & Auth Listener
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    // 1. Restore active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user && !isDemoSession) {
+        const user = session.user;
+        fetchUserData(user.id).then((remoteData) => {
+          if (remoteData) {
+            if (remoteData.profile) setProfile(remoteData.profile);
+            if (remoteData.wallets.length > 0) setWallets(remoteData.wallets);
+            if (remoteData.categories.length > 0) setCategories(remoteData.categories);
+            if (remoteData.transactions.length > 0) setTransactions(remoteData.transactions);
+            if (remoteData.budgets.length > 0) setBudgets(remoteData.budgets);
+            if (remoteData.categoryRules.length > 0) setCategoryRules(remoteData.categoryRules);
+          }
+        });
+      }
+    });
+
+    // 2. Auth State Change Listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const user = session.user;
+        const remote = await fetchUserData(user.id);
+        if (remote) {
+          if (remote.profile) setProfile(remote.profile);
+          if (remote.wallets.length > 0) setWallets(remote.wallets);
+          if (remote.categories.length > 0) setCategories(remote.categories);
+          if (remote.transactions.length > 0) setTransactions(remote.transactions);
+          if (remote.budgets.length > 0) setBudgets(remote.budgets);
+          if (remote.categoryRules.length > 0) setCategoryRules(remote.categoryRules);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [isDemoSession]);
+
+  // Outbox background sync listener
+  useEffect(() => {
+    const handleOnline = () => {
+      syncOutbox().then((res) => {
+        if (res.syncedCount > 0) {
+          addToast({
+            title: 'Cloud Synchronized',
+            message: `Synced ${res.syncedCount} transaction update(s).`,
+            type: 'success',
+          });
+        }
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleOnline);
+      handleOnline();
+      return () => {
+        window.removeEventListener('online', handleOnline);
+      };
+    }
+  }, []);
+
+  // Realtime changes subscription for multi-tab / multi-device sync
+  useEffect(() => {
+    if (!profile || isDemoSession || !isSupabaseConfigured) return;
+
+    const unsubscribe = subscribeToUserChanges(profile.id, (payload) => {
+      if (payload.eventType === 'INSERT' && payload.new) {
+        setTransactions((prev) => {
+          if (prev.some((t) => t.id === payload.new.id)) return prev;
+          return [payload.new as Transaction, ...prev];
+        });
+      } else if (payload.eventType === 'UPDATE' && payload.new) {
+        setTransactions((prev) =>
+          prev.map((t) => (t.id === payload.new.id ? (payload.new as Transaction) : t))
+        );
+      } else if (payload.eventType === 'DELETE' && payload.old) {
+        setTransactions((prev) => prev.filter((t) => t.id !== payload.old.id));
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [profile?.id, isDemoSession]);
+
   // Clear all user data for fresh signup or reset
   const clearAllUserData = () => {
     setTransactions([]);
@@ -323,34 +443,34 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'false');
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: password || 'password123',
-        });
-        if (!error && data.user) {
-          const newProf: Profile = {
-            id: data.user.id,
-            email: data.user.email || email,
-            display_name: name || data.user.user_metadata?.display_name || email.split('@')[0],
-            base_currency: 'INR',
-            ai_consent: 'none',
-            onboarded_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-          };
-          setProfile(newProf);
-          addToast({ title: 'Welcome back!', message: `Logged in as ${newProf.display_name}`, type: 'success' });
-          return;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: password || '',
+      });
+      if (error) {
+        throw new Error(mapSupabaseAuthError(error.message));
+      }
+      if (data.user) {
+        const remote = await fetchUserData(data.user.id);
+        const newProf: Profile = remote?.profile || {
+          id: data.user.id,
+          email: data.user.email || email,
+          display_name: name || data.user.user_metadata?.display_name || email.split('@')[0],
+          base_currency: 'INR',
+          ai_consent: 'none',
+          onboarded_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        };
+        setProfile(newProf);
+        if (remote) {
+          if (remote.wallets.length > 0) setWallets(remote.wallets);
+          if (remote.categories.length > 0) setCategories(remote.categories);
+          if (remote.transactions.length > 0) setTransactions(remote.transactions);
+          if (remote.budgets.length > 0) setBudgets(remote.budgets);
+          if (remote.categoryRules.length > 0) setCategoryRules(remote.categoryRules);
         }
-        if (error) {
-          throw error;
-        }
-      } catch (err: any) {
-        if (!isSupabaseConfigured) {
-          console.warn('Supabase login failed, using local auth mode:', err);
-        } else {
-          throw err;
-        }
+        addToast({ title: 'Welcome back!', message: `Logged in as ${newProf.display_name}`, type: 'success' });
+        return;
       }
     }
 
@@ -387,33 +507,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     clearAllUserData();
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password: password || 'password123',
-          options: {
-            data: { display_name: name },
-          },
-        });
-        if (error) throw error;
-        const newProf: Profile = {
-          id: data.user?.id || `user_${Date.now()}`,
-          email,
-          display_name: name,
-          base_currency: 'INR',
-          ai_consent: 'none',
-          onboarded_at: null, // Gate to Onboarding
-          created_at: new Date().toISOString(),
-        };
-        setProfile(newProf);
-        return;
-      } catch (err: any) {
-        if (!isSupabaseConfigured) {
-          console.warn('Supabase signup fallback:', err);
-        } else {
-          throw err;
-        }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: password || '',
+        options: {
+          data: { display_name: name },
+        },
+      });
+      if (error) {
+        throw new Error(mapSupabaseAuthError(error.message));
       }
+      const newProf: Profile = {
+        id: data.user?.id || `user_${Date.now()}`,
+        email,
+        display_name: name,
+        base_currency: 'INR',
+        ai_consent: 'none',
+        onboarded_at: null, // Gate to Onboarding
+        created_at: new Date().toISOString(),
+      };
+      setProfile(newProf);
+      return;
     }
 
     // Local signup
@@ -427,6 +541,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       created_at: new Date().toISOString(),
     };
     setProfile(newProf);
+  };
+
+  const signInWithMagicLink = async (email: string) => {
+    setIsDemoSession(false);
+    localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'false');
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        },
+      });
+      if (error) throw new Error(mapSupabaseAuthError(error.message));
+      addToast({
+        title: 'Magic Link Sent!',
+        message: 'Check your email for the secure login link.',
+        type: 'success',
+        duration: 8000,
+      });
+      return;
+    }
+
+    // Local simulation
+    addToast({
+      title: 'Local Mode Simulation',
+      message: `Simulated magic link dispatched to ${email}.`,
+      type: 'info',
+    });
   };
 
   const logout = () => {
@@ -443,13 +586,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!profile) return;
     const updated = { ...profile, ...updates };
     setProfile(updated);
+    if (!isDemoSession) {
+      saveProfile(updated);
+    }
     addToast({ title: 'Profile Updated', message: 'Your settings have been saved.', type: 'success' });
   };
 
   const completeOnboarding = async (currency: string, walletName: string, budgetCategory?: string, budgetAmount?: number) => {
     if (!profile) return;
 
-    // Ensure real user has zero demo transactions
     if (!isDemoSession) {
       setTransactions([]);
       setBudgets([]);
@@ -461,6 +606,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       onboarded_at: new Date().toISOString(),
     };
     setProfile(updatedProf);
+    if (!isDemoSession) saveProfile(updatedProf);
 
     // Create primary wallet
     const newWallet: Wallet = {
@@ -474,6 +620,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       created_at: new Date().toISOString(),
     };
     setWallets([newWallet]);
+    if (!isDemoSession) saveWallet(newWallet, true);
 
     // Optional Budget
     if (budgetCategory && budgetAmount && budgetAmount > 0) {
@@ -488,6 +635,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         created_at: new Date().toISOString(),
       };
       setBudgets([newBudget]);
+      if (!isDemoSession) saveBudget(newBudget, true);
     }
 
     addToast({ title: 'Setup Complete!', message: 'Welcome to ClearSpend. Start logging in one line.', type: 'success' });
@@ -518,6 +666,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setTransactions((prev) => [newTxn, ...prev]);
+    if (!isDemoSession) {
+      saveTransaction(newTxn, true);
+    }
 
     // Run duplicate detection on newly inserted row
     const existingDuplicates = transactions.filter(
@@ -544,23 +695,41 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    let updatedTxn: Transaction | null = null;
     setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t))
+      prev.map((t) => {
+        if (t.id === id) {
+          updatedTxn = { ...t, ...updates, updated_at: new Date().toISOString() };
+          return updatedTxn;
+        }
+        return t;
+      })
     );
+    if (updatedTxn && !isDemoSession) {
+      saveTransaction(updatedTxn, false);
+    }
     addToast({ title: 'Transaction Updated', message: 'Changes saved successfully.', type: 'success' });
   };
 
   const deleteTransaction = async (id: string) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
+    if (!isDemoSession) {
+      removeTransaction(id);
+    }
     addToast({ title: 'Transaction Deleted', message: 'Transaction removed from ledger.', type: 'info' });
   };
 
   const bulkRecategorize = async (transactionIds: string[], newCategoryId: string) => {
     const targetCat = categories.find((c) => c.id === newCategoryId);
     setTransactions((prev) =>
-      prev.map((t) =>
-        transactionIds.includes(t.id) ? { ...t, category_id: newCategoryId, updated_at: new Date().toISOString() } : t
-      )
+      prev.map((t) => {
+        if (transactionIds.includes(t.id)) {
+          const updated = { ...t, category_id: newCategoryId, updated_at: new Date().toISOString() };
+          if (!isDemoSession) saveTransaction(updated, false);
+          return updated;
+        }
+        return t;
+      })
     );
     addToast({
       title: 'Bulk Updated',
@@ -571,6 +740,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const bulkDeleteTransactions = async (transactionIds: string[]) => {
     setTransactions((prev) => prev.filter((t) => !transactionIds.includes(t.id)));
+    if (!isDemoSession) {
+      transactionIds.forEach((id) => removeTransaction(id));
+    }
     addToast({
       title: 'Transactions Deleted',
       message: `Removed ${transactionIds.length} transactions.`,
@@ -583,33 +755,40 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!profile || !merchant.trim()) return { pastUpdatedCount: 0 };
     const cleanMatch = merchant.toLowerCase().trim();
 
+    let savedRule: CategoryRule | null = null;
+    let isNewRule = false;
+
     // Upsert rule
     setCategoryRules((prev) => {
       const idx = prev.findIndex((r) => r.match_text === cleanMatch);
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = {
+        savedRule = {
           ...updated[idx],
           category_id: categoryId,
           hit_count: updated[idx].hit_count + 1,
           updated_at: new Date().toISOString(),
         };
+        updated[idx] = savedRule;
         return updated;
       } else {
-        return [
-          ...prev,
-          {
-            id: `rule_${Date.now()}`,
-            user_id: profile.id,
-            match_text: cleanMatch,
-            category_id: categoryId,
-            hit_count: 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ];
+        isNewRule = true;
+        savedRule = {
+          id: `rule_${Date.now()}`,
+          user_id: profile.id,
+          match_text: cleanMatch,
+          category_id: categoryId,
+          hit_count: 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        return [...prev, savedRule];
       }
     });
+
+    if (savedRule && !isDemoSession) {
+      saveRule(savedRule, isNewRule);
+    }
 
     let pastUpdatedCount = 0;
     if (applyToPast) {
@@ -621,7 +800,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             (t.merchant.toLowerCase().includes(cleanMatch) || (t.note && t.note.toLowerCase().includes(cleanMatch)))
           ) {
             pastUpdatedCount++;
-            return { ...t, category_id: categoryId, was_corrected: true, updated_at: new Date().toISOString() };
+            const updated = { ...t, category_id: categoryId, was_corrected: true, updated_at: new Date().toISOString() };
+            if (!isDemoSession) saveTransaction(updated, false);
+            return updated;
           }
           return t;
         })
@@ -636,10 +817,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTransactions((prev) =>
       prev.map((t) => {
         if (t.id === duplicateId) {
-          return { ...t, status: 'merged', updated_at: new Date().toISOString() };
+          const u = { ...t, status: 'merged' as const, updated_at: new Date().toISOString() };
+          if (!isDemoSession) saveTransaction(u, false);
+          return u;
         }
         if (t.id === originalId) {
-          return { ...t, duplicate_of_id: null, updated_at: new Date().toISOString() };
+          const u = { ...t, duplicate_of_id: null, updated_at: new Date().toISOString() };
+          if (!isDemoSession) saveTransaction(u, false);
+          return u;
         }
         return t;
       })
@@ -649,7 +834,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const keepBothDuplicates = async (duplicateId: string) => {
     setTransactions((prev) =>
-      prev.map((t) => (t.id === duplicateId ? { ...t, duplicate_of_id: null, updated_at: new Date().toISOString() } : t))
+      prev.map((t) => {
+        if (t.id === duplicateId) {
+          const u = { ...t, duplicate_of_id: null, updated_at: new Date().toISOString() };
+          if (!isDemoSession) saveTransaction(u, false);
+          return u;
+        }
+        return t;
+      })
     );
     addToast({ title: 'Kept Both', message: 'Both transactions kept active.', type: 'info' });
   };
@@ -664,16 +856,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!profile) return;
     const newW: Wallet = { ...w, id: `wallet_${Date.now()}`, user_id: profile.id, created_at: new Date().toISOString() };
     setWallets((prev) => [...prev, newW]);
+    if (!isDemoSession) saveWallet(newW, true);
     addToast({ title: 'Wallet Created', message: `${newW.name} added.`, type: 'success' });
   };
 
   const updateWallet = async (id: string, updates: Partial<Wallet>) => {
-    setWallets((prev) => prev.map((w) => (w.id === id ? { ...w, ...updates } : w)));
+    setWallets((prev) =>
+      prev.map((w) => {
+        if (w.id === id) {
+          const updated = { ...w, ...updates };
+          if (!isDemoSession) saveWallet(updated, false);
+          return updated;
+        }
+        return w;
+      })
+    );
     addToast({ title: 'Wallet Updated', message: 'Wallet details saved.', type: 'success' });
   };
 
   const deleteWallet = async (id: string) => {
     setWallets((prev) => prev.filter((w) => w.id !== id));
+    if (!isDemoSession) removeWallet(id);
     addToast({ title: 'Wallet Removed', message: 'Wallet has been deleted.', type: 'info' });
   };
 
@@ -682,21 +885,39 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!profile) return;
     const newCat: Category = { ...cat, id: `cat_${Date.now()}`, user_id: profile.id, created_at: new Date().toISOString() };
     setCategories((prev) => [...prev, newCat]);
+    if (!isDemoSession) saveCategory(newCat, true);
     addToast({ title: 'Category Created', message: `${newCat.name} created.`, type: 'success' });
   };
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
-    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+    setCategories((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          const updated = { ...c, ...updates };
+          if (!isDemoSession) saveCategory(updated, false);
+          return updated;
+        }
+        return c;
+      })
+    );
     addToast({ title: 'Category Updated', message: 'Category details saved.', type: 'success' });
   };
 
   const deleteCategory = async (id: string, reassignToCategoryId?: string) => {
     if (reassignToCategoryId) {
       setTransactions((prev) =>
-        prev.map((t) => (t.category_id === id ? { ...t, category_id: reassignToCategoryId } : t))
+        prev.map((t) => {
+          if (t.category_id === id) {
+            const updated = { ...t, category_id: reassignToCategoryId, updated_at: new Date().toISOString() };
+            if (!isDemoSession) saveTransaction(updated, false);
+            return updated;
+          }
+          return t;
+        })
       );
     }
     setCategories((prev) => prev.filter((c) => c.id !== id));
+    if (!isDemoSession) removeCategory(id);
     addToast({ title: 'Category Deleted', message: 'Category removed and transactions reassigned.', type: 'info' });
   };
 
@@ -705,16 +926,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!profile) return;
     const newB: Budget = { ...b, id: `budget_${Date.now()}`, user_id: profile.id, created_at: new Date().toISOString() };
     setBudgets((prev) => [...prev, newB]);
+    if (!isDemoSession) saveBudget(newB, true);
     addToast({ title: 'Budget Set', message: `Budget allocated successfully.`, type: 'success' });
   };
 
   const updateBudget = async (id: string, updates: Partial<Budget>) => {
-    setBudgets((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    setBudgets((prev) =>
+      prev.map((b) => {
+        if (b.id === id) {
+          const updated = { ...b, ...updates };
+          if (!isDemoSession) saveBudget(updated, false);
+          return updated;
+        }
+        return b;
+      })
+    );
     addToast({ title: 'Budget Updated', message: 'Budget limit updated.', type: 'success' });
   };
 
   const deleteBudget = async (id: string) => {
     setBudgets((prev) => prev.filter((b) => b.id !== id));
+    if (!isDemoSession) removeBudget(id);
     addToast({ title: 'Budget Removed', message: 'Budget tracking deleted.', type: 'info' });
   };
 
@@ -762,6 +994,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         login,
         loginAsDemo,
         signup,
+        signInWithMagicLink,
         logout,
         updateProfile,
         completeOnboarding,
