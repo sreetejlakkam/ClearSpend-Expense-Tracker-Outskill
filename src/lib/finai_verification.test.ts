@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateDeterministicFinAIResponse } from './finai';
+import { generateDeterministicFinAIResponse, queryFinAIChat } from './finai';
 import { translations } from './i18n';
 
 describe('FinAI Engine & Multi-Language Budget/Ledger Tests', () => {
@@ -184,6 +184,24 @@ describe('FinAI Engine & Multi-Language Budget/Ledger Tests', () => {
     const hiRadar = generateDeterministicFinAIResponse('क्लियर स्कोर रडार के बारे में बताएं', dummyState as any, 'hi');
     expect(hiRadar).toContain('क्लियर स्कोर™');
     expect(hiRadar).toContain('आपातकालीन रनवे');
+  });
+
+  it('routes queryFinAIChat to Qwen 2.5 Free AI and DeepSeek Free AI gracefully', async () => {
+    const qwenRes = await queryFinAIChat('How much did I spend on Zomato?', dummyState as any, {
+      preferredModel: 'qwen',
+      language: 'en',
+    });
+    expect(qwenRes.text).toBeDefined();
+    expect(qwenRes.modelUsed).toBeDefined();
+    expect(['Qwen 2.5 Free AI', 'Autonomous Precision Engine']).toContain(qwenRes.modelUsed);
+
+    const deepseekRes = await queryFinAIChat('What is my total savings rate?', dummyState as any, {
+      preferredModel: 'deepseek',
+      language: 'en',
+    });
+    expect(deepseekRes.text).toBeDefined();
+    expect(deepseekRes.modelUsed).toBeDefined();
+    expect(['DeepSeek Free AI', 'Autonomous Precision Engine']).toContain(deepseekRes.modelUsed);
   });
 });
 

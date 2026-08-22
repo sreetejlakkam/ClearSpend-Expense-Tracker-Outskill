@@ -146,7 +146,7 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
         sender: 'finai',
         text: welcomeText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        modelUsed: 'Free Cloud AI (Puter / Gemini)',
+        modelUsed: preferredModel === 'gemini' ? 'Google Gemini 2.5 Flash' : preferredModel === 'deepseek' ? 'DeepSeek Free AI' : 'Qwen 2.5 Free AI',
       },
     ];
   });
@@ -239,13 +239,14 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
   };
 
   const handleClearChat = () => {
+    const activeLabel = preferredModel === 'gemini' ? 'Google Gemini 2.5 Flash' : preferredModel === 'deepseek' ? 'DeepSeek Free AI' : 'Qwen 2.5 Free AI';
     setMessages([
       {
         id: 'reset',
         sender: 'finai',
         text: `Chat history cleared. How can I help you optimize your spending and wealth today?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        modelUsed: 'Free AI Engine',
+        modelUsed: activeLabel,
       },
     ]);
   };
@@ -604,7 +605,7 @@ Ask me anything about your merchants (Zomato, Swiggy, Uber), affordability queri
 
             <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed space-y-3">
               <p>
-                To provide generative reasoning with <strong>Google Gemini</strong> or <strong>Puter Cloud AI</strong>, FinAI securely sends minimal financial context to process your questions.
+                To provide generative financial intelligence with <strong>Google Gemini 2.5 Flash</strong>, <strong>Qwen 2.5 Free AI</strong>, or <strong>DeepSeek Free AI</strong>, FinAI securely processes minimal anonymised financial context for your active month queries.
               </p>
               
               <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-700">

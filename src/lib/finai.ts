@@ -5,7 +5,7 @@ export interface ChatMessage {
   sender: 'user' | 'finai';
   text: string;
   timestamp: string;
-  modelUsed?: 'Google Gemini 2.5 Flash' | 'Puter Free Cloud AI' | 'Free AI Copilot' | string;
+  modelUsed?: string;
   suggestedActions?: string[];
   metrics?: {
     label: string;
@@ -98,7 +98,7 @@ ${allTxnsStr || 'None'}
 `.trim();
 }
 
-// 1. Call Google Gemini API (gemini-2.5-flash / gemini-2.0-flash / gemini-1.5-flash) with full context
+// 1. Call Google Gemini API (gemini-2.5-flash / gemini-2.5-pro / gemini-1.5-flash) with full context
 export async function queryGeminiAI(
   prompt: string,
   financialContext: string,
@@ -112,12 +112,12 @@ export async function queryGeminiAI(
     selectedMonthStr: string;
   },
   language: 'en' | 'te' | 'hi' = 'en'
-): Promise<string> {
+): Promise<{ text: string; modelName: string }> {
   const localStoredKey = typeof localStorage !== 'undefined' ? localStorage.getItem('clearspend_gemini_key') || '' : '';
-  const key = apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStoredKey;
+  const key = (apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStoredKey || '').trim();
 
   if (!key) {
-    throw new Error('NO_API_KEY');
+    throw new Error('No Google Gemini API key configured. Please paste your key in FinAI settings or switch to Qwen 2.5 / DeepSeek Free AI.');
   }
 
   const langInstruction = language === 'te'
@@ -151,26 +151,44 @@ CRITICAL INSTRUCTION:
     }
   };
 
-  // Try gemini-2.0-flash, gemini-2.5-flash, and gemini-1.5-flash
-  const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  // Modern Google Gemini models across v1beta and v1
+  const candidateModels = [
+    { name: 'gemini-2.5-flash', apiVersion: 'v1beta', label: 'Google Gemini 2.5 Flash' },
+    { name: 'gemini-2.5-flash-preview', apiVersion: 'v1beta', label: 'Google Gemini 2.5 Flash' },
+    { name: 'gemini-2.5-pro', apiVersion: 'v1beta', label: 'Google Gemini 2.5 Pro' },
+    { name: 'gemini-1.5-flash-latest', apiVersion: 'v1beta', label: 'Google Gemini 1.5 Flash' },
+    { name: 'gemini-1.5-pro-latest', apiVersion: 'v1beta', label: 'Google Gemini 1.5 Pro' },
+    { name: 'gemini-1.5-flash', apiVersion: 'v1beta', label: 'Google Gemini 1.5 Flash' },
+    { name: 'gemini-2.0-flash', apiVersion: 'v1beta', label: 'Google Gemini 2.0 Flash' },
+    { name: 'gemini-1.5-flash', apiVersion: 'v1', label: 'Google Gemini 1.5 Flash' },
+  ];
+
   let lastError: any = null;
 
-  for (const modelName of models) {
+  for (const candidate of candidateModels) {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/${candidate.apiVersion}/models/${candidate.name}:generateContent?key=${key}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody),
+          signal: controller.signal,
         }
       );
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text && text.trim().length > 0) {
-          return text;
+          return {
+            text: text.trim(),
+            modelName: candidate.label,
+          };
         }
       } else {
         const errJson = await response.json().catch(() => ({}));
@@ -181,7 +199,7 @@ CRITICAL INSTRUCTION:
     }
   }
 
-  throw lastError || new Error('Google Gemini API request failed. Please check your API key.');
+  throw lastError || new Error('Google Gemini API request failed. Please verify your API key or use Qwen / DeepSeek.');
 }
 
 // 2. Call Direct Free Qwen 2.5 / DeepSeek Model (100% Free & Zero Key Required)
@@ -191,14 +209,16 @@ export async function queryFreeLLM(
   modelType: 'qwen' | 'deepseek' = 'qwen',
   language: 'en' | 'te' | 'hi' = 'en',
   state?: any
-): Promise<string> {
+): Promise<{ text: string; modelName: string }> {
   const langInstruction = language === 'te'
     ? 'IMPORTANT: Respond fluently in Telugu (తెలుగు లిపి) with bold numbers and bullet points.'
     : language === 'hi'
     ? 'IMPORTANT: Respond fluently in Hindi (हिन्दी देवनागरी लिपि) with bold numbers and bullet points.'
     : 'Respond in English with bold numbers and bullet points.';
 
-  const systemInstruction = `You are FinAI (powered by ${modelType === 'qwen' ? 'Qwen 2.5' : 'DeepSeek'}), an expert, encouraging, and data-driven personal financial copilot in the ClearSpend app.
+  const targetLabel = modelType === 'qwen' ? 'Qwen 2.5 Free AI' : 'DeepSeek Free AI';
+
+  const systemInstruction = `You are FinAI (powered by ${targetLabel}), an expert, encouraging, and data-driven personal financial copilot in the ClearSpend app.
 ${langInstruction}
 CRITICAL INSTRUCTION:
 - You have access to the user's REAL financial ledger transactions provided below.
@@ -209,35 +229,65 @@ CRITICAL INSTRUCTION:
 
   const fullPrompt = `${systemInstruction}\n\n=== USER LIVE FINANCIAL LEDGER DATA ===\n${financialContext}\n\n=== USER SPECIFIC QUERY ===\n${prompt}`;
 
-  // Call free serverless inference API
+  // 1. Browser Client-Side Puter AI inference (CORS-free, fast free tier)
+  if (typeof window !== 'undefined' && (window as any).puter?.ai?.chat) {
+    try {
+      const puter = (window as any).puter;
+      const modelIdentifier = modelType === 'qwen' ? 'qwen/qwen3.8-max' : 'deepseek-chat';
+      const puterRes = await puter.ai.chat(fullPrompt, { model: modelIdentifier });
+      const text = typeof puterRes === 'string' ? puterRes : puterRes?.message?.content || puterRes?.text || '';
+      if (text && text.trim().length > 10) {
+        return {
+          text: text.trim(),
+          modelName: targetLabel,
+        };
+      }
+    } catch (puterErr) {
+      console.warn('Puter in-browser AI failed, falling back:', puterErr);
+    }
+  }
+
+  // 2. Direct serverless open inference endpoint (Pollinations)
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
     const response = await fetch('https://text.pollinations.ai/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         messages: [{ role: 'user', content: fullPrompt }],
-        model: modelType === 'qwen' ? 'openai-fast' : 'openai',
+        model: 'openai-fast',
         temperature: 0.3,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       const text = await response.text();
-      if (text && text.trim().length > 15 && !text.includes('Payment Required') && !text.includes('error')) {
-        return text;
+      if (text && text.trim().length > 15 && !text.includes('Queue full') && !text.includes('error')) {
+        return {
+          text: text.trim(),
+          modelName: targetLabel,
+        };
       }
     }
   } catch (err) {
-    console.warn(`Free LLM query failed, using built-in precision engine:`, err);
+    console.warn(`Free LLM fetch error:`, err);
   }
 
-  // Fallback to our rock-solid deterministic financial precision solver
-  return generateDeterministicFinAIResponse(prompt, state, language);
+  // 3. Fallback to rock-solid deterministic financial precision solver
+  const localText = generateDeterministicFinAIResponse(prompt, state, language);
+  return {
+    text: localText,
+    modelName: 'Autonomous Precision Engine',
+  };
 }
 
 export interface FinAIQueryResponse {
   text: string;
-  modelUsed: 'Google Gemini 2.5 Flash' | 'Qwen 2.5 Free AI' | 'DeepSeek Free AI' | 'Autonomous Precision Engine';
+  modelUsed: string;
 }
 
 // 3. Universal Multi-Tiered FinAI Query Orchestrator with Consent Gate
@@ -259,7 +309,7 @@ export async function queryFinAIChat(
 ): Promise<FinAIQueryResponse> {
   const language = options?.language || 'en';
   const localStoredKey = typeof localStorage !== 'undefined' ? localStorage.getItem('clearspend_gemini_key') || '' : '';
-  const apiKey = options?.apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStoredKey;
+  const apiKey = (options?.apiKey || (import.meta as any).env?.VITE_GEMINI_API_KEY || localStoredKey || '').trim();
   const preferredModel = options?.preferredModel || 'auto';
   const hasCloudConsent = state.profile?.ai_consent === 'cloud';
 
@@ -281,57 +331,50 @@ export async function queryFinAIChat(
     state.selectedMonthStr
   );
 
-  // Mode 1: Gemini API (if key is set or model explicitly chosen)
+  // Mode 1: Gemini API
   if ((preferredModel === 'gemini' || (preferredModel === 'auto' && apiKey)) && apiKey) {
     try {
-      const geminiText = await queryGeminiAI(prompt, financialContext, apiKey, state, language);
+      const geminiResult = await queryGeminiAI(prompt, financialContext, apiKey, state, language);
       return {
-        text: geminiText,
-        modelUsed: 'Google Gemini 2.5 Flash',
+        text: geminiResult.text,
+        modelUsed: geminiResult.modelName || 'Google Gemini 2.5 Flash',
       };
     } catch (err: any) {
-      console.warn('Gemini query failed:', err);
+      console.warn('Gemini query failed, attempting smooth fallback:', err);
       if (preferredModel === 'gemini') {
-        throw err;
-      }
-    }
-  }
-
-  // Mode 2: Qwen 2.5 Free AI (Zero-config free LLM)
-  if (preferredModel === 'qwen' || preferredModel === 'auto') {
-    try {
-      const qwenText = await queryFreeLLM(prompt, financialContext, 'qwen', language, state);
-      if (qwenText && qwenText.trim().length > 10) {
+        const fallback = await queryFreeLLM(prompt, financialContext, 'qwen', language, state);
+        const notice = `> ⚠️ **Google Gemini Notice:** ${err?.message || 'API request failed'}. FinAI answered using **${fallback.modelName}**.\n\n`;
         return {
-          text: qwenText,
-          modelUsed: 'Qwen 2.5 Free AI',
+          text: notice + fallback.text,
+          modelUsed: `${fallback.modelName} (Gemini Fallback)`,
         };
       }
-    } catch (err) {
-      console.warn('Qwen free AI query failed, falling back to local engine:', err);
     }
   }
 
-  // Mode 3: DeepSeek Free AI (if chosen)
+  // Mode 2: Qwen 2.5 Free AI
+  if (preferredModel === 'qwen') {
+    const qwenResult = await queryFreeLLM(prompt, financialContext, 'qwen', language, state);
+    return {
+      text: qwenResult.text,
+      modelUsed: qwenResult.modelName,
+    };
+  }
+
+  // Mode 3: DeepSeek Free AI
   if (preferredModel === 'deepseek') {
-    try {
-      const deepseekText = await queryFreeLLM(prompt, financialContext, 'deepseek', language, state);
-      if (deepseekText && deepseekText.trim().length > 10) {
-        return {
-          text: deepseekText,
-          modelUsed: 'DeepSeek Free AI',
-        };
-      }
-    } catch (err) {
-      console.warn('DeepSeek free AI query failed:', err);
-    }
+    const deepseekResult = await queryFreeLLM(prompt, financialContext, 'deepseek', language, state);
+    return {
+      text: deepseekResult.text,
+      modelUsed: deepseekResult.modelName,
+    };
   }
 
-  // Mode 4: Built-in Precision Math Engine
-  const localText = generateDeterministicFinAIResponse(prompt, state, language);
+  // Mode 4: Auto (Smart Multi-Tier Routing)
+  const autoResult = await queryFreeLLM(prompt, financialContext, 'qwen', language, state);
   return {
-    text: localText,
-    modelUsed: 'Autonomous Precision Engine',
+    text: autoResult.text,
+    modelUsed: autoResult.modelName,
   };
 }
 
@@ -492,6 +535,22 @@ export function generateDeterministicFinAIResponse(
       .slice(0, 8)
       .map((t) => `  • **${t.txn_date}**: ${currSym}${t.amount.toLocaleString()}${t.note ? ` (${t.note})` : ''}`)
       .join('\n');
+
+    if (language === 'te') {
+      return `### 🧾 ${merchantName} ఖర్చుల వివరాలు\n\n**${selectedMonthStr}** లో **${merchantName}** పై మీ లెడ్జర్ వివరాలు:\n\n- **మొత్తం ఖర్చు:** **${currSym}${merchTotal.toLocaleString()}**\n- **లావాదేవీల సంఖ్య:** **${merchCount} ఆర్డర్లు/చెల్లింపులు**\n- **సగటు లావాదేవీ:** **${currSym}${merchAvg.toLocaleString()}**\n- **నెలవారీ ఖర్చుల శాతం:** మొత్తం వ్యయంలో **${pctOfTotal}%**\n- **వర్గం (Category):** **${cat?.name || 'జనరల్'}**\n\n**వివరాల జాబితా:**\n${itemsList}\n\n💡 **పొదుపు సూచన:** ${
+        pctOfTotal > 15
+          ? `ఈ వ్యాపారి వద్ద మీ ఖర్చు మొత్తం ఖర్చులలో **${pctOfTotal}%** ఉంది. నెలకు 20% తగ్గిస్తే **${currSym}${Math.round(merchTotal * 0.2).toLocaleString()}** ఆదా అవుతుంది!`
+          : `ఈ వ్యాపారి వద్ద ఖర్చు సాధారణ పరిమితిలోనే ఉంది.`
+      }`;
+    }
+
+    if (language === 'hi') {
+      return `### 🧾 ${merchantName} पर खर्च का ब्योरा\n\n**${selectedMonthStr}** में **${merchantName}** पर आपका लेज़र सारांश:\n\n- **कुल खर्च:** **${currSym}${merchTotal.toLocaleString()}**\n- **लेनदेन की संख्या:** **${merchCount} ऑर्डर्स/भुगतान**\n- **औसत प्रति लेनदेन:** **${currSym}${merchAvg.toLocaleString()}**\n- **मासिक खर्च में हिस्सेदारी:** कुल खर्च का **${pctOfTotal}%**\n- **श्रेणी (Category):** **${cat?.name || 'सामान्य'}**\n\n**लेनदेन सूची:**\n${itemsList}\n\n💡 **बचत सलाह:** ${
+        pctOfTotal > 15
+          ? `यह मर्चेंट आपके कुल खर्च का **${pctOfTotal}%** हिस्सा है। इसमें 20% कमी करने से आप प्रति माह **${currSym}${Math.round(merchTotal * 0.2).toLocaleString()}** बचा सकते हैं!`
+          : `इस मर्चेंट पर खर्च संतुलित सीमा में है।`
+      }`;
+    }
 
     return `### 🧾 Spending Breakdown for ${merchantName}\n\nHere is your exact ledger summary for **${merchantName}** in **${selectedMonthStr}**:\n\n- **Total Spent:** **${currSym}${merchTotal.toLocaleString()}**\n- **Transaction Count:** **${merchCount} orders/payments**\n- **Average Per Transaction:** **${currSym}${merchAvg.toLocaleString()}**\n- **Share of Monthly Spend:** **${pctOfTotal}%** of all expenses\n- **Category:** **${cat?.name || 'General'}**\n\n**Itemized Records:**\n${itemsList}\n\n💡 **Optimization Tip:** ${
       pctOfTotal > 15
