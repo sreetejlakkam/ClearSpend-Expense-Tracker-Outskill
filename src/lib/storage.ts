@@ -238,9 +238,12 @@ export function getInitialDemoState(userId: string = 'demo_user_1') {
   const transactions: Transaction[] = rawTxns.map((t, idx) => {
     const id = `txn_demo_${idx + 1}`;
     const fp = generateFingerprint(t.merchant, t.note, t.amount, t.date, t.wallet);
+    const isSharedExpense = (t.cat === 'cat_rent' || t.cat === 'cat_bills' || t.cat === 'cat_groceries');
     return {
       id,
       user_id: userId,
+      household_id: isSharedExpense ? 'hh_sharma_demo' : null,
+      visibility: isSharedExpense ? 'shared' : 'private',
       wallet_id: t.wallet,
       category_id: t.cat,
       amount: t.amount,
@@ -258,6 +261,72 @@ export function getInitialDemoState(userId: string = 'demo_user_1') {
       created_at: new Date(t.date).toISOString(),
       updated_at: new Date(t.date).toISOString(),
     };
+  });
+
+  // 5 Months of Partner (Priya) Transactions for Joint Family Room Demo
+  const partnerRawTxns = [
+    // Month 0 (Current Month - August 2026)
+    { amount: 70000, kind: 'income', date: getDemoDateStr(0, 1), merchant: 'Infosys Senior Consultant Salary', cat: 'cat_salary', wallet: 'w_bank', note: 'Monthly salary', vis: 'shared' },
+    { amount: 20000, kind: 'expense', date: getDemoDateStr(0, 2), merchant: 'Apartment Rent (Priya Share)', cat: 'cat_rent', wallet: 'w_bank', note: 'Joint flat rent', vis: 'shared' },
+    { amount: 3500, kind: 'expense', date: getDaysAgoStr(5), merchant: 'Nature Basket Organic Groceries', cat: 'cat_groceries', wallet: 'w_card', note: 'Weekly organic produce', vis: 'shared' },
+    { amount: 2100, kind: 'expense', date: getDaysAgoStr(8), merchant: 'Electricity & Gas Utilities', cat: 'cat_bills', wallet: 'w_upi', note: 'Combined home utility bill', vis: 'shared' },
+    { amount: 1400, kind: 'expense', date: getDaysAgoStr(11), merchant: 'Burma Burma Family Dining', cat: 'cat_food', wallet: 'w_card', note: 'Weekend joint dinner', vis: 'shared' },
+    { amount: 2400, kind: 'expense', date: getDaysAgoStr(13), merchant: 'FabIndia Linen Kurta', cat: 'cat_shopping', wallet: 'w_card', note: 'Personal apparel', vis: 'private' },
+
+    // Month 1 (July 2026)
+    { amount: 70000, kind: 'income', date: getDemoDateStr(1, 1), merchant: 'Infosys Senior Consultant Salary', cat: 'cat_salary', wallet: 'w_bank', note: 'Monthly salary credit', vis: 'shared' },
+    { amount: 20000, kind: 'expense', date: getDemoDateStr(1, 2), merchant: 'Apartment Rent (Priya Share)', cat: 'cat_rent', wallet: 'w_bank', note: 'Flat rent share', vis: 'shared' },
+    { amount: 4800, kind: 'expense', date: getDemoDateStr(1, 6), merchant: 'DMart Supermarket Staples', cat: 'cat_groceries', wallet: 'w_card', note: 'Monthly groceries restock', vis: 'shared' },
+    { amount: 1950, kind: 'expense', date: getDemoDateStr(1, 10), merchant: 'Electricity Bill', cat: 'cat_bills', wallet: 'w_upi', note: 'Summer utility power bill', vis: 'shared' },
+    { amount: 1600, kind: 'expense', date: getDemoDateStr(1, 17), merchant: 'Mainland China Dining', cat: 'cat_food', wallet: 'w_card', note: 'Joint anniversary dinner', vis: 'shared' },
+
+    // Month 2 (June 2026)
+    { amount: 70000, kind: 'income', date: getDemoDateStr(2, 1), merchant: 'Infosys Senior Consultant Salary', cat: 'cat_salary', wallet: 'w_bank', note: 'Monthly salary credit', vis: 'shared' },
+    { amount: 20000, kind: 'expense', date: getDemoDateStr(2, 2), merchant: 'Apartment Rent (Priya Share)', cat: 'cat_rent', wallet: 'w_bank', note: 'Flat rent share', vis: 'shared' },
+    { amount: 5100, kind: 'expense', date: getDemoDateStr(2, 5), merchant: 'DMart Groceries Bulk', cat: 'cat_groceries', wallet: 'w_card', note: 'Kitchen groceries & provisions', vis: 'shared' },
+    { amount: 2200, kind: 'expense', date: getDemoDateStr(2, 9), merchant: 'Summer Electricity Utility', cat: 'cat_bills', wallet: 'w_upi', note: 'AC power utility bill', vis: 'shared' },
+    { amount: 1800, kind: 'expense', date: getDemoDateStr(2, 16), merchant: 'Toit Brewpub Catchup', cat: 'cat_food', wallet: 'w_card', note: 'Family dinner', vis: 'shared' },
+
+    // Month 3 (May 2026)
+    { amount: 70000, kind: 'income', date: getDemoDateStr(3, 1), merchant: 'Infosys Senior Consultant Salary', cat: 'cat_salary', wallet: 'w_bank', note: 'Monthly salary', vis: 'shared' },
+    { amount: 20000, kind: 'expense', date: getDemoDateStr(3, 2), merchant: 'Apartment Rent (Priya Share)', cat: 'cat_rent', wallet: 'w_bank', note: 'Flat rent share', vis: 'shared' },
+    { amount: 4300, kind: 'expense', date: getDemoDateStr(3, 7), merchant: 'Blinkit Super Saver Groceries', cat: 'cat_groceries', wallet: 'w_upi', note: 'Monthly pantry staples', vis: 'shared' },
+    { amount: 1800, kind: 'expense', date: getDemoDateStr(3, 12), merchant: 'Broadband & Gas Bill', cat: 'cat_bills', wallet: 'w_upi', note: 'Home utilities', vis: 'shared' },
+    { amount: 1500, kind: 'expense', date: getDemoDateStr(3, 19), merchant: 'Windmills Craftworks Dining', cat: 'cat_food', wallet: 'w_card', note: 'Joint weekend lunch', vis: 'shared' },
+
+    // Month 4 (April 2026)
+    { amount: 70000, kind: 'income', date: getDemoDateStr(4, 1), merchant: 'Infosys Senior Consultant Salary', cat: 'cat_salary', wallet: 'w_bank', note: 'Monthly salary', vis: 'shared' },
+    { amount: 20000, kind: 'expense', date: getDemoDateStr(4, 2), merchant: 'Apartment Rent (Priya Share)', cat: 'cat_rent', wallet: 'w_bank', note: 'Flat rent share', vis: 'shared' },
+    { amount: 4600, kind: 'expense', date: getDemoDateStr(4, 5), merchant: 'DMart Supermarket', cat: 'cat_groceries', wallet: 'w_card', note: 'Groceries and home restock', vis: 'shared' },
+    { amount: 1750, kind: 'expense', date: getDemoDateStr(4, 11), merchant: 'Home Electricity Bill', cat: 'cat_bills', wallet: 'w_upi', note: 'Power bill', vis: 'shared' },
+    { amount: 1300, kind: 'expense', date: getDemoDateStr(4, 20), merchant: 'Cafe Noir Dining', cat: 'cat_food', wallet: 'w_card', note: 'Weekend coffee & dessert', vis: 'shared' },
+  ];
+
+  partnerRawTxns.forEach((pt, pIdx) => {
+    const id = `txn_demo_partner_${pIdx + 1}`;
+    const fp = generateFingerprint(pt.merchant, pt.note, pt.amount, pt.date, pt.wallet);
+    transactions.push({
+      id,
+      user_id: 'user_priya_demo',
+      household_id: 'hh_sharma_demo',
+      visibility: (pt.vis || 'shared') as any,
+      wallet_id: pt.wallet,
+      category_id: pt.cat,
+      amount: pt.amount,
+      kind: pt.kind as 'expense' | 'income',
+      txn_date: pt.date,
+      merchant: pt.merchant,
+      note: pt.note,
+      source: 'manual',
+      ai_confidence: 0.94,
+      ai_suggested_category_id: pt.cat,
+      was_corrected: false,
+      fingerprint: fp,
+      duplicate_of_id: null,
+      status: 'active',
+      created_at: new Date(pt.date).toISOString(),
+      updated_at: new Date(pt.date).toISOString(),
+    });
   });
 
   // 1. Plant an authentic rapid-tap duplicate for the Review Inbox demo

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { queryFinAIChat, generateDeterministicFinAIResponse } from './finai';
+import { generateDeterministicFinAIResponse } from './finai';
 import { translations } from './i18n';
 
 describe('FinAI Engine & Multi-Language Budget/Ledger Tests', () => {
@@ -86,14 +86,11 @@ describe('FinAI Engine & Multi-Language Budget/Ledger Tests', () => {
     selectedMonthStr: '2026-08',
   };
 
-  it('performs accurate ledger merchant calculations for Zomato queries', async () => {
-    const res = await queryFinAIChat('How much spent on Zomato?', dummyState as any, {
-      preferredModel: 'auto',
-      language: 'en',
-    });
+  it('performs accurate ledger merchant calculations for Zomato queries', () => {
+    const res = generateDeterministicFinAIResponse('How much spent on Zomato?', dummyState as any, 'en');
 
-    expect(res.text).toContain('830'); // 380 + 450
-    expect(res.text).toContain('Zomato');
+    expect(res).toContain('830'); // 380 + 450
+    expect(res).toContain('Zomato');
   });
 
   it('generates Telugu and Hindi responses accurately in precision engine', () => {
@@ -172,4 +169,21 @@ describe('FinAI Engine & Multi-Language Budget/Ledger Tests', () => {
       expect((translations.hi as any)[key]).toBeDefined();
     }
   });
+
+  it('answers ClearScore and 5-pillar spider radar queries accurately in FinAI engine', () => {
+    const enRadar = generateDeterministicFinAIResponse('Explain my 5-pillar spider map and runway', dummyState as any, 'en');
+    expect(enRadar).toContain('5-Pillar Spider Radar');
+    expect(enRadar).toContain('Emergency Runway');
+    expect(enRadar).toContain('Savings Rate Velocity');
+    expect(enRadar).toContain('Fixed Commitments');
+
+    const teRadar = generateDeterministicFinAIResponse('క్లియర్ స్కోర్ రాడార్ వివరాలు చెప్పండి', dummyState as any, 'te');
+    expect(teRadar).toContain('క్లియర్ స్కోర్™');
+    expect(teRadar).toContain('ఎమర్జెన్సీ రన్‌వే');
+
+    const hiRadar = generateDeterministicFinAIResponse('क्लियर स्कोर रडार के बारे में बताएं', dummyState as any, 'hi');
+    expect(hiRadar).toContain('क्लियर स्कोर™');
+    expect(hiRadar).toContain('आपातकालीन रनवे');
+  });
 });
+

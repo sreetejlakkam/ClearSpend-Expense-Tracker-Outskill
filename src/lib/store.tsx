@@ -267,7 +267,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed: Transaction[] = JSON.parse(saved);
+      // Auto-replenish partner transactions across 5 months for joint Family Room
+      if (isDemoSession && !parsed.some((t) => t.user_id === 'user_priya_demo')) {
+        const partnerTxns = demoData.transactions.filter((t) => t.user_id === 'user_priya_demo');
+        return [...parsed, ...partnerTxns];
+      }
+      return parsed;
+    }
     return isDemoSession ? demoData.transactions : [];
   });
 

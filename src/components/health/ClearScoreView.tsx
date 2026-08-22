@@ -3,15 +3,18 @@ import {
   ShieldCheck,
   TrendingUp,
   Flame,
-  Lock,
-  PieChart,
   Sparkles,
   Sliders,
   CheckCircle2,
   RotateCcw,
+  Bot,
+  Send,
+  Zap,
+  RefreshCw,
 } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { useTranslation } from '../../lib/i18n';
+import { queryFinAIChat } from '../../lib/finai';
 
 export const ClearScoreView: React.FC = () => {
   const {
@@ -23,7 +26,7 @@ export const ClearScoreView: React.FC = () => {
     selectedMonthStr,
     addToast,
   } = useStore();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const currSym = profile?.base_currency === 'INR' ? '₹' : (profile?.base_currency || '₹');
 
@@ -85,9 +88,19 @@ export const ClearScoreView: React.FC = () => {
   }, [budgets, monthTxns]);
 
   // What-If Simulation State
-  const [incomeDeltaPct, setIncomeDeltaPct] = useState(0); // -30% to +30%
-  const [expenseCutAmount, setExpenseCutAmount] = useState(0); // 0 to ₹10,000
-  const [extraRunwayBuffer, setExtraRunwayBuffer] = useState(0); // 0 to ₹50,000
+  const [incomeDeltaPct, setIncomeDeltaPct] = useState(0); // -30% to +50%
+  const [expenseCutAmount, setExpenseCutAmount] = useState(0); // 0 to ₹15,000
+  const [extraRunwayBuffer, setExtraRunwayBuffer] = useState(0); // 0 to ₹100,000
+
+  // Interactive Pillar Selection state
+  const [selectedPillarIdx, setSelectedPillarIdx] = useState<number | null>(null);
+
+  // FinAI Radar Assistant State
+  const [radarQuery, setRadarQuery] = useState('');
+  const [radarModel, setRadarModel] = useState<'auto' | 'qwen' | 'deepseek' | 'gemini'>('auto');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [modelUsedBadge, setModelUsedBadge] = useState<string | null>(null);
 
   // Calculation Engine
   const metrics = useMemo(() => {
@@ -141,33 +154,27 @@ export const ClearScoreView: React.FC = () => {
 
     let grade = 'A';
     let gradeLabel = 'Strong & Resilient';
-    let gradeColor = 'from-emerald-500 to-teal-600';
     let gradeBadgeBg = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
 
     if (totalScore >= 90) {
       grade = 'AAA';
       gradeLabel = 'Elite Financial Fortress';
-      gradeColor = 'from-emerald-400 via-teal-500 to-cyan-500';
       gradeBadgeBg = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
     } else if (totalScore >= 75) {
       grade = 'AA';
       gradeLabel = 'Healthy & High Pacing';
-      gradeColor = 'from-teal-500 to-emerald-600';
       gradeBadgeBg = 'bg-teal-500/20 text-teal-300 border-teal-500/30';
     } else if (totalScore >= 60) {
       grade = 'A';
       gradeLabel = 'Stable with Growth Scope';
-      gradeColor = 'from-indigo-500 to-brand-600';
       gradeBadgeBg = 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
     } else if (totalScore >= 45) {
       grade = 'B';
       gradeLabel = 'Moderate Pacing Risk';
-      gradeColor = 'from-amber-500 to-orange-600';
       gradeBadgeBg = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
     } else {
       grade = 'C';
       gradeLabel = 'High Burn / Immediate Attention';
-      gradeColor = 'from-rose-500 to-red-600';
       gradeBadgeBg = 'bg-rose-500/20 text-rose-300 border-rose-500/30';
     }
 
@@ -183,7 +190,6 @@ export const ClearScoreView: React.FC = () => {
       totalScore,
       grade,
       gradeLabel,
-      gradeColor,
       gradeBadgeBg,
       simIncome,
       simExpense,
@@ -201,33 +207,102 @@ export const ClearScoreView: React.FC = () => {
     extraRunwayBuffer,
   ]);
 
-  // Radar points geometry (5 vertices on a circle)
-  const radarPoints = useMemo(() => {
-    const cx = 100;
-    const cy = 100;
-    const maxR = 75;
+  // Pillar metadata definition with human-friendly intuitive labels
+  const pillars = useMemo(() => [
+    {
+      id: 'runway',
+      name: 'Emergency Runway',
+      label: '🛡️ Runway',
+      sublabel: `${metrics.runwayMonths} mos buffer`,
+      score: metrics.runwayScore,
+      max: 20,
+      color: '#10B981',
+      bgClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+      textClass: 'text-emerald-600 dark:text-emerald-400',
+      description: `Your liquid cash covers ${metrics.runwayMonths} months of living burn. Target is 6 months.`,
+    },
+    {
+      id: 'savings',
+      name: 'Savings Velocity',
+      label: '📈 Savings',
+      sublabel: `${metrics.savingsRate}% retained`,
+      score: metrics.savingsScore,
+      max: 20,
+      color: '#6366F1',
+      bgClass: 'bg-indigo-50 dark:bg-indigo-950/60',
+      textClass: 'text-indigo-600 dark:text-indigo-400',
+      description: `You are saving ${metrics.savingsRate}% of gross income. Exceeding 20% earns full points.`,
+    },
+    {
+      id: 'burn',
+      name: 'Daily Burn Pacing',
+      label: '⚡ Burn Rate',
+      sublabel: 'Pacing Safe',
+      score: metrics.burnScore,
+      max: 20,
+      color: '#F59E0B',
+      bgClass: 'bg-amber-50 dark:bg-amber-950/60',
+      textClass: 'text-amber-600 dark:text-amber-400',
+      description: 'Your day-to-day burn is aligned with the monthly safe spending envelope.',
+    },
+    {
+      id: 'fixed',
+      name: 'Fixed Commitments',
+      label: '🔒 Fixed (50/30/20)',
+      sublabel: `${metrics.fixedRatio}% of income`,
+      score: metrics.fixedScore,
+      max: 20,
+      color: '#06B6D4',
+      bgClass: 'bg-cyan-50 dark:bg-cyan-950/60',
+      textClass: 'text-cyan-600 dark:text-cyan-400',
+      description: `Rent and recurring bills consume ${metrics.fixedRatio}% of inflow (healthy ceiling is 50%).`,
+    },
+    {
+      id: 'envelopes',
+      name: 'Budget Envelopes',
+      label: '🎯 Budget Caps',
+      sublabel: `${budgets.length - overbudgetCount}/${budgets.length || 1} Green`,
+      score: metrics.envelopeScore,
+      max: 20,
+      color: '#EC4899',
+      bgClass: 'bg-rose-50 dark:bg-rose-950/60',
+      textClass: 'text-rose-600 dark:text-rose-400',
+      description: `${budgets.length - overbudgetCount} of ${budgets.length} category envelopes are comfortably within limits.`,
+    },
+  ], [metrics, budgets.length, overbudgetCount]);
 
-    const scores = [
-      metrics.runwayScore / 20,
-      metrics.savingsScore / 20,
-      metrics.burnScore / 20,
-      metrics.fixedScore / 20,
-      metrics.envelopeScore / 20,
-    ];
+  // Expanded SVG Spider geometry with labeled coordinates
+  const radarGeometry = useMemo(() => {
+    const cx = 170;
+    const cy = 155;
+    const maxR = 92;
 
-    const coords = scores.map((ratio, i) => {
+    const coords = pillars.map((p, i) => {
       const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-      const r = Math.max(0.15, ratio) * maxR;
+      const ratio = Math.max(0.18, p.score / p.max);
+      const r = ratio * maxR;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+
+      // Label anchor points slightly beyond max radius
+      const labelR = maxR + 32;
+      const lx = cx + labelR * Math.cos(angle);
+      const ly = cy + labelR * Math.sin(angle);
+
       return {
-        x: cx + r * Math.cos(angle),
-        y: cy + r * Math.sin(angle),
+        x,
+        y,
+        lx,
+        ly,
+        angle,
+        pillar: p,
       };
     });
 
-    const pathData = coords.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ') + ' Z';
+    const polygonPath = coords.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(' ') + ' Z';
 
-    return { coords, pathData };
-  }, [metrics]);
+    return { cx, cy, maxR, coords, polygonPath };
+  }, [pillars]);
 
   const handleResetSimulation = () => {
     setIncomeDeltaPct(0);
@@ -240,11 +315,43 @@ export const ClearScoreView: React.FC = () => {
     });
   };
 
+  // Submit query to FinAI Copilot
+  const handleAskRadarQuestion = async (queryText?: string) => {
+    const q = queryText || radarQuery.trim();
+    if (!q) return;
+
+    setIsAiLoading(true);
+    setAiResponse(null);
+
+    try {
+      const stateObj = {
+        profile,
+        wallets,
+        categories,
+        transactions,
+        budgets,
+        selectedMonthStr,
+      };
+
+      const res = await queryFinAIChat(q, stateObj, {
+        preferredModel: radarModel,
+        language,
+      });
+
+      setAiResponse(res.text);
+      setModelUsedBadge(res.modelUsed);
+    } catch (err: any) {
+      setAiResponse('### ⚠️ FinAI Copilot Notice\n\nFinAI is ready. You can test your query with **Qwen 2.5 Free AI** or verify your Google Gemini key.');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const isSimulated = incomeDeltaPct !== 0 || expenseCutAmount !== 0 || extraRunwayBuffer !== 0;
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-5 pb-28">
-      {/* Header Banner */}
+      {/* 1. Header Banner & ClearScore Hero */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 sm:p-6 rounded-3xl text-white border border-indigo-500/30 shadow-2xl relative overflow-hidden">
         <div className="absolute -top-16 -right-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -282,203 +389,372 @@ export const ClearScoreView: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid: 5-Pillar Radar Spider Chart & Pillar Score Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Left: SVG Spider Radar Visualizer */}
-        <div className="md:col-span-5 bg-white dark:bg-surface-dark p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center relative">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 self-start">
-            5-Pillar Spider Map
-          </h3>
+      {/* 2. Real-Time AI Financial Fitness Executive Summary */}
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-indigo-900/30 via-slate-900/50 to-indigo-900/30 rounded-3xl border border-indigo-500/20 shadow-sm space-y-2.5">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-brand-500/20 text-brand-300 flex items-center justify-center">
+              <Bot className="w-4 h-4" />
+            </div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">
+              AI Financial Posture Assessment • {selectedMonthStr}
+            </h3>
+          </div>
+          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            {metrics.gradeLabel}
+          </span>
+        </div>
 
-          <div className="relative w-56 h-56 my-2">
-            <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-md">
-              {/* Background Concentric Radar Polygons */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+          <div className="p-3 bg-white/5 dark:bg-slate-800/50 rounded-2xl border border-white/5 space-y-1">
+            <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 uppercase">
+              <CheckCircle2 className="w-3 h-3" /> Core Strength
+            </span>
+            <p className="text-slate-200 text-[11px] leading-relaxed">
+              <strong>{metrics.savingsRate}% Savings Velocity</strong> lets you retain <strong>{currSym}{(totalEarned - totalSpent).toLocaleString()}</strong> this month.
+            </p>
+          </div>
+
+          <div className="p-3 bg-white/5 dark:bg-slate-800/50 rounded-2xl border border-white/5 space-y-1">
+            <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1 uppercase">
+              <Flame className="w-3 h-3" /> Key Opportunity
+            </span>
+            <p className="text-slate-200 text-[11px] leading-relaxed">
+              Liquid runway stands at <strong>{metrics.runwayMonths} months</strong>. Reaching 6 months unlocks an instant <strong>AAA fortress rating</strong>.
+            </p>
+          </div>
+
+          <div className="p-3 bg-white/5 dark:bg-slate-800/50 rounded-2xl border border-white/5 space-y-1">
+            <span className="text-[10px] font-bold text-cyan-400 flex items-center gap-1 uppercase">
+              <TrendingUp className="w-3 h-3" /> 20-Yr Compounding
+            </span>
+            <p className="text-slate-200 text-[11px] leading-relaxed">
+              Channeling {currSym}3,000/mo into an equity index SIP yields <strong>{currSym}30+ Lakhs</strong> in 20 years at 12% CAGR.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Grid: Enhanced Labeled 5-Pillar Spider Radar & Pillar Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        {/* Left: Enhanced SVG Spider Radar Visualizer with Intuitive Axis Labels */}
+        <div className="md:col-span-6 bg-white dark:bg-surface-dark p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="w-full flex items-center justify-between mb-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              5-Pillar Spider Map
+            </h3>
+            <span className="text-[10px] text-slate-400">
+              Tap any spoke to inspect
+            </span>
+          </div>
+
+          {/* SVG Map Container */}
+          <div className="relative w-full aspect-square max-w-[340px] my-1">
+            <svg viewBox="0 0 340 310" className="w-full h-full drop-shadow-md select-none">
+              {/* Concentric Guide Polygons with percentage badges */}
               {[0.25, 0.5, 0.75, 1.0].map((scale, idx) => {
                 const polyPoints = [0, 1, 2, 3, 4]
                   .map((i) => {
                     const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-                    const r = scale * 75;
-                    return `${(100 + r * Math.cos(angle)).toFixed(1)},${(100 + r * Math.sin(angle)).toFixed(1)}`;
+                    const r = scale * radarGeometry.maxR;
+                    return `${(radarGeometry.cx + r * Math.cos(angle)).toFixed(1)},${(radarGeometry.cy + r * Math.sin(angle)).toFixed(1)}`;
                   })
                   .join(' ');
                 return (
-                  <polygon
-                    key={idx}
-                    points={polyPoints}
-                    fill="none"
-                    stroke="currentColor"
-                    className="text-slate-200 dark:text-slate-700"
-                    strokeWidth="1"
-                    strokeDasharray={idx < 3 ? '2 2' : 'none'}
-                  />
+                  <g key={idx}>
+                    <polygon
+                      points={polyPoints}
+                      fill="none"
+                      stroke="currentColor"
+                      className="text-slate-200 dark:text-slate-700/80"
+                      strokeWidth={idx === 3 ? '1.5' : '1'}
+                      strokeDasharray={idx < 3 ? '2 2' : 'none'}
+                    />
+                    {/* Ring Percentage Markers along vertical axis */}
+                    <text
+                      x={radarGeometry.cx + 4}
+                      y={radarGeometry.cy - scale * radarGeometry.maxR + 10}
+                      className="text-[8px] font-mono font-bold fill-slate-400 dark:fill-slate-600"
+                    >
+                      {scale * 100}%
+                    </text>
+                  </g>
                 );
               })}
 
               {/* Axis Spoke Lines */}
-              {[0, 1, 2, 3, 4].map((i) => {
-                const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-                return (
-                  <line
-                    key={i}
-                    x1="100"
-                    y1="100"
-                    x2={(100 + 75 * Math.cos(angle)).toFixed(1)}
-                    y2={(100 + 75 * Math.sin(angle)).toFixed(1)}
-                    stroke="currentColor"
-                    className="text-slate-200 dark:text-slate-700"
-                    strokeWidth="1"
-                  />
-                );
-              })}
+              {radarGeometry.coords.map((c, i) => (
+                <line
+                  key={i}
+                  x1={radarGeometry.cx}
+                  y1={radarGeometry.cy}
+                  x2={(radarGeometry.cx + radarGeometry.maxR * Math.cos(c.angle)).toFixed(1)}
+                  y2={(radarGeometry.cy + radarGeometry.maxR * Math.sin(c.angle)).toFixed(1)}
+                  stroke="currentColor"
+                  className="text-slate-200 dark:text-slate-700"
+                  strokeWidth="1.2"
+                />
+              ))}
 
               {/* Filled Radar Area */}
               <polygon
-                points={radarPoints.coords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
+                points={radarGeometry.polygonPath}
                 fill="url(#radarGradient)"
                 stroke="#6366f1"
                 strokeWidth="2.5"
                 className="transition-all duration-500 ease-out"
               />
 
-              {/* Glowing Dots at Vertices */}
-              {radarPoints.coords.map((p, idx) => (
-                <circle
-                  key={idx}
-                  cx={p.x}
-                  cy={p.y}
-                  r="4"
-                  fill="#4f46e5"
-                  stroke="#ffffff"
-                  strokeWidth="1.5"
-                  className="transition-all duration-500"
-                />
-              ))}
+              {/* Vertices Dots */}
+              {radarGeometry.coords.map((c, idx) => {
+                const isSelected = selectedPillarIdx === idx;
+                return (
+                  <g
+                    key={idx}
+                    onClick={() => setSelectedPillarIdx(selectedPillarIdx === idx ? null : idx)}
+                    className="cursor-pointer group"
+                  >
+                    <circle
+                      cx={c.x}
+                      cy={c.y}
+                      r={isSelected ? 6 : 4.5}
+                      fill={isSelected ? '#f59e0b' : '#4f46e5'}
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                      className="transition-all duration-300 hover:scale-125"
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Clear Intuitive Axis Text Labels around the Map */}
+              {radarGeometry.coords.map((c, idx) => {
+                const isSelected = selectedPillarIdx === idx;
+                const p = c.pillar;
+
+                // Adjust text positioning offset based on angle
+                let textAnchor: 'start' | 'middle' | 'end' = 'middle';
+                let dx = 0;
+                let dy = 0;
+
+                if (idx === 0) { // Top (Runway)
+                  dy = -12;
+                } else if (idx === 1) { // Top-Right (Savings)
+                  textAnchor = 'start';
+                  dx = 10;
+                  dy = -4;
+                } else if (idx === 2) { // Bottom-Right (Burn)
+                  textAnchor = 'start';
+                  dx = 8;
+                  dy = 12;
+                } else if (idx === 3) { // Bottom-Left (Fixed)
+                  textAnchor = 'end';
+                  dx = -8;
+                  dy = 12;
+                } else if (idx === 4) { // Top-Left (Budgets)
+                  textAnchor = 'end';
+                  dx = -10;
+                  dy = -4;
+                }
+
+                return (
+                  <g
+                    key={idx}
+                    onClick={() => setSelectedPillarIdx(selectedPillarIdx === idx ? null : idx)}
+                    className="cursor-pointer group"
+                  >
+                    <text
+                      x={c.lx + dx}
+                      y={c.ly + dy}
+                      textAnchor={textAnchor}
+                      className={`text-[10px] font-black transition-all ${
+                        isSelected
+                          ? 'fill-amber-500 font-extrabold'
+                          : 'fill-slate-700 dark:fill-slate-200 group-hover:fill-brand-600'
+                      }`}
+                    >
+                      {p.label}
+                    </text>
+                    <text
+                      x={c.lx + dx}
+                      y={c.ly + dy + 11}
+                      textAnchor={textAnchor}
+                      className="text-[9px] font-bold fill-slate-400 dark:fill-slate-500"
+                    >
+                      {p.sublabel} ({p.score}/20)
+                    </text>
+                  </g>
+                );
+              })}
 
               <defs>
                 <linearGradient id="radarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.45" />
+                  <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.5" />
                   <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.25" />
                 </linearGradient>
               </defs>
             </svg>
           </div>
 
-          <div className="text-center mt-2">
+          <div className="text-center mt-1">
             <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">
               {metrics.gradeLabel}
             </span>
             <span className="text-[11px] text-slate-400">
-              Composite score updated live from {monthTxns.length} active entries
+              Live composite score from {monthTxns.length} transactions
             </span>
           </div>
         </div>
 
-        {/* Right: Detailed 5 Pillars breakdown */}
-        <div className="md:col-span-7 bg-white dark:bg-surface-dark p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+        {/* Right: Detailed 5 Pillars breakdown cards */}
+        <div className="md:col-span-6 bg-white dark:bg-surface-dark p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Pillar Performance & Weights
+            Pillar Performance Breakdown
           </h3>
 
-          {/* Pillar 1: Emergency Runway */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-slate-800 dark:text-slate-200">{t('clearscore.emergency_runway', 'Emergency Runway')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{metrics.runwayMonths} mos</span>
-                <span className="text-[11px] text-emerald-600 font-extrabold">({metrics.runwayScore}/20 pts)</span>
-              </div>
-            </div>
-            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(metrics.runwayScore / 20) * 100}%` }} />
-            </div>
-          </div>
+          <div className="space-y-2">
+            {pillars.map((p, idx) => {
+              const isSelected = selectedPillarIdx === idx;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedPillarIdx(isSelected ? null : idx)}
+                  className={`cursor-pointer p-2.5 sm:p-3 rounded-2xl border transition-all ${
+                    isSelected
+                      ? 'bg-brand-50/70 dark:bg-brand-950/40 border-brand-400 dark:border-brand-600 shadow-xs'
+                      : 'bg-slate-50/80 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{p.label.split(' ')[0]}</span>
+                      <span className="text-slate-900 dark:text-white font-extrabold">{p.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
+                        {p.sublabel}
+                      </span>
+                      <span className={`text-[11px] font-extrabold ${p.textClass}`}>
+                        ({p.score}/20 pts)
+                      </span>
+                    </div>
+                  </div>
 
-          {/* Pillar 2: Savings Velocity */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-slate-800 dark:text-slate-200">{t('clearscore.savings_velocity', 'Savings Rate Velocity')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{metrics.savingsRate}%</span>
-                <span className="text-[11px] text-indigo-600 font-extrabold">({metrics.savingsScore}/20 pts)</span>
-              </div>
-            </div>
-            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(metrics.savingsScore / 20) * 100}%` }} />
-            </div>
-          </div>
+                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-1.5">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${(p.score / p.max) * 100}%`, backgroundColor: p.color }}
+                    />
+                  </div>
 
-          {/* Pillar 3: Daily Burn Adherence */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-950/80 text-amber-600">
-                  <Flame className="w-3.5 h-3.5" />
+                  {isSelected && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 leading-relaxed animate-in fade-in">
+                      {p.description}
+                    </p>
+                  )}
                 </div>
-                <span className="text-slate-800 dark:text-slate-200">{t('clearscore.burn_adherence', 'Daily Burn Discipline')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">Pacing Safe</span>
-                <span className="text-[11px] text-amber-600 font-extrabold">({metrics.burnScore}/20 pts)</span>
-              </div>
-            </div>
-            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${(metrics.burnScore / 20) * 100}%` }} />
-            </div>
-          </div>
-
-          {/* Pillar 4: Fixed Commitments */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-cyan-100 dark:bg-cyan-950/80 text-cyan-600">
-                  <Lock className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-slate-800 dark:text-slate-200">{t('clearscore.fixed_commitments', 'Fixed Commitments (50/30/20)')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">{metrics.fixedRatio}%</span>
-                <span className="text-[11px] text-cyan-600 font-extrabold">({metrics.fixedScore}/20 pts)</span>
-              </div>
-            </div>
-            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${(metrics.fixedScore / 20) * 100}%` }} />
-            </div>
-          </div>
-
-          {/* Pillar 5: Envelope Health */}
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-600">
-                  <PieChart className="w-3.5 h-3.5" />
-                </div>
-                <span className="text-slate-800 dark:text-slate-200">{t('clearscore.envelope_health', 'Budget Envelope Health')}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
-                  {budgets.length - overbudgetCount}/{budgets.length} Envelopes
-                </span>
-                <span className="text-[11px] text-rose-600 font-extrabold">({metrics.envelopeScore}/20 pts)</span>
-              </div>
-            </div>
-            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-rose-500 rounded-full" style={{ width: `${(metrics.envelopeScore / 20) * 100}%` }} />
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Interactive "What-If" Stress Test Playground */}
+      {/* 4. FinAI Radar Copilot Bar (Ask Questions About Spider Map & What It Means) */}
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl text-white border border-indigo-500/30 shadow-xl space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-xs">
+              <Bot className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-extrabold text-white">
+                FinAI Radar Assistant • Ask Questions About Your Score
+              </h3>
+              <p className="text-[10.5px] text-slate-300">
+                Ask what your spider map means, why a pillar is scored high or low, or how to hit AAA grade.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <select
+              value={radarModel}
+              onChange={(e) => setRadarModel(e.target.value as any)}
+              className="text-[11px] font-bold px-2.5 py-1 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-slate-100 focus:outline-hidden cursor-pointer"
+            >
+              <option value="auto" className="bg-slate-900 text-white">⚡ Auto (Smart Free AI)</option>
+              <option value="qwen" className="bg-slate-900 text-white">🚀 Qwen 2.5 Free AI</option>
+              <option value="deepseek" className="bg-slate-900 text-white">🧠 DeepSeek Free AI</option>
+              <option value="gemini" className="bg-slate-900 text-white">🤖 Gemini 2.5 Flash</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Preset Prompt Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {[
+            'Explain my 5-pillar spider map',
+            'How to get AAA grade on ClearScore?',
+            'Why is my Emergency Runway score low?',
+            'How does my 50/30/20 ratio compare?',
+          ].map((promptText, pIdx) => (
+            <button
+              key={pIdx}
+              onClick={() => {
+                setRadarQuery(promptText);
+                handleAskRadarQuestion(promptText);
+              }}
+              className="shrink-0 text-[10.5px] font-bold px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-indigo-200 hover:text-white border border-white/10 transition-colors"
+            >
+              💬 {promptText}
+            </button>
+          ))}
+        </div>
+
+        {/* Input Bar */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAskRadarQuestion();
+          }}
+          className="flex items-center gap-2 pt-1"
+        >
+          <input
+            type="text"
+            value={radarQuery}
+            onChange={(e) => setRadarQuery(e.target.value)}
+            placeholder='Ask FinAI: "How to raise my score by +15 points this month?"…'
+            className="flex-1 text-xs font-medium px-3.5 py-2.5 bg-white/10 border border-white/15 rounded-2xl text-white placeholder:text-slate-400 focus:outline-hidden focus:border-brand-400"
+          />
+          <button
+            type="submit"
+            disabled={isAiLoading || !radarQuery.trim()}
+            className="px-4 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-md active:scale-95 shrink-0"
+          >
+            {isAiLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            <span>Ask</span>
+          </button>
+        </form>
+
+        {/* AI Answer Box */}
+        {aiResponse && (
+          <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/15 text-xs text-slate-100 leading-relaxed space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold border-b border-white/10 pb-1.5">
+              <span>FinAI Answer</span>
+              {modelUsedBadge && (
+                <span className="px-2 py-0.5 rounded-full bg-brand-500/30 text-brand-200 border border-brand-400/30">
+                  {modelUsedBadge}
+                </span>
+              )}
+            </div>
+            <div className="whitespace-pre-line prose prose-invert max-w-none text-slate-200 text-xs">
+              {aiResponse}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5. Interactive "What-If" Stress Test Playground */}
       <div className="p-5 sm:p-6 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -575,40 +851,77 @@ export const ClearScoreView: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Financial Prescriptions */}
+      {/* 6. AI Strategic Prescriptions with 1-Click Simulation */}
       <div className="p-5 sm:p-6 bg-white dark:bg-surface-dark rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
-            <Sparkles className="w-4 h-4" />
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+              {t('clearscore.prescriptions_title', 'AI Financial Prescriptions')}
+            </h3>
           </div>
-          <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-            {t('clearscore.prescriptions_title', 'AI Financial Prescriptions')}
-          </h3>
+          <span className="text-[10px] text-slate-400 font-bold">
+            1-Tap Actions to Boost Score
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex items-start gap-3">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
-                Boost Liquid Buffer to 6 Months
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                Add {currSym}25,000 to liquid savings to reach an ironclad 6-month safety net and unlock an instant +8 points on ClearScore.
-              </p>
+          {/* Card 1 */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex flex-col justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  6-Month Emergency Runway
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Injecting {currSym}25,000 into high-yield liquid reserves expands your safety net to 4.5+ months and adds +7 score points.
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                setExtraRunwayBuffer(25000);
+                addToast({
+                  title: 'Playground Configured',
+                  message: 'Simulating +₹25,000 Emergency Buffer top-up.',
+                  type: 'success',
+                });
+              }}
+              className="self-end text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+            >
+              <Zap className="w-3 h-3" /> Test in Simulator
+            </button>
           </div>
 
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex items-start gap-3">
-            <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
-                Channel {currSym}3,000/mo into SIP
-              </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                Redirecting just 10% of discretionary spend into an equity index fund compounds to {currSym}30+ Lakhs in 20 years at 12% CAGR.
-              </p>
+          {/* Card 2 */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/60 dark:border-slate-700 flex flex-col justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  SIP Compounding Acceleration
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Trimming discretionary spend by {currSym}2,000/mo and routing it into Nifty 50 SIP compounds to {currSym}20+ Lakhs in 20 yrs.
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                setExpenseCutAmount(2000);
+                addToast({
+                  title: 'Playground Configured',
+                  message: 'Simulating -₹2,000 Discretionary spend trim.',
+                  type: 'success',
+                });
+              }}
+              className="self-end text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            >
+              <Zap className="w-3 h-3" /> Test in Simulator
+            </button>
           </div>
         </div>
       </div>

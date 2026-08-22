@@ -409,6 +409,52 @@ export function generateDeterministicFinAIResponse(
     return `### 📈 The Power of Compounding Visualizer\n\nIf you redirect **${currSym}${monthlySip.toLocaleString()}/month** of avoidable spending into a standard 12% CAGR equity index fund / SIP:\n\n- **In 10 Years:** **${fmt(calc10)}** (Capital Invested: ${currSym}${(monthlySip * 120).toLocaleString()})\n- **In 20 Years:** **${fmt(calc20)}** (Capital Invested: ${currSym}${(monthlySip * 240).toLocaleString()}) — **4.2× Multiplier!**\n- **In 30 Years:** **${fmt(calc30)}** (Capital Invested: ${currSym}${(monthlySip * 360).toLocaleString()}) — **9.8× Multiplier!**\n\n💡 **Key Takeaway:** An avoidable expense of ${currSym}${monthlySip.toLocaleString()} is not just ₹${monthlySip} lost today — it is **${fmt(calc20)}** of lost future wealth over 20 years!`;
   }
 
+  // 0B. CLEARSCORE & 5-PILLAR SPIDER MAP QUERY
+  if (
+    p.includes('clearscore') ||
+    p.includes('spider') ||
+    p.includes('radar') ||
+    p.includes('health') ||
+    p.includes('runway') ||
+    p.includes('aaa') ||
+    p.includes('grade') ||
+    p.includes('5 pillar') ||
+    p.includes('pillar') ||
+    p.includes('fitness') ||
+    p.includes('క్లియర్') ||
+    p.includes('స్కోర్') ||
+    p.includes('రాడార్') ||
+    p.includes('रडार') ||
+    p.includes('स्कोर')
+  ) {
+    const totalLiquid = wallets.reduce((sum, w) => sum + (w.opening_balance || 0), 0) +
+      activeTxns.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0) -
+      activeTxns.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0);
+
+    const monthlyBurn = Math.max(totalSpent, 10000);
+    const runwayMonths = (Math.max(0, totalLiquid) / monthlyBurn).toFixed(1);
+
+    const fixedNeeds = monthTxns.filter((t) => {
+      if (t.kind !== 'expense') return false;
+      const cat = categories.find((c) => c.id === t.category_id);
+      const name = (cat?.name || '').toLowerCase();
+      const note = (t.note || '').toLowerCase();
+      return name.includes('rent') || name.includes('bill') || name.includes('utilit') || note.includes('rent');
+    }).reduce((s, t) => s + t.amount, 0);
+
+    const fixedPct = totalEarned > 0 ? Math.round((fixedNeeds / totalEarned) * 100) : 35;
+
+    if (language === 'te') {
+      return `### 🕸️ క్లియర్ స్కోర్™ 5-స్తంభాల రాడార్ విశ్లేషణ\n\nమీ **${selectedMonthStr}** ఆర్థిక రికార్డుల ఆధారంగా రాడార్ స్కోరు:\n\n1. 🛡️ **ఎమర్జెన్సీ రన్‌వే:** **${runwayMonths} నెలలు** (లిక్విడ్ నిల్వలు: ${currSym}${Math.round(totalLiquid).toLocaleString()})\n2. 📈 **పొదుపు రేటు వేగం:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} నికర పొదుపు)\n3. ⚡ **రోజువారీ ఖర్చు క్రమశిక్షణ:** సురక్షిత పరిమితిలో ఉంది\n4. 🔒 **స్థిర ఖర్చులు (50/30/20):** **${fixedPct}%** ఆదాయంలో\n5. 🎯 **బడ్జెట్ ఎన్వలప్ ఆరోగ్యం:** ${budgets.length} బడ్జెట్‌లు ట్రాక్‌లో ఉన్నాయి\n\n💡 **గ్రేడ్ మెరుగుపరచడానికి చిట్కా:** లిక్విడ్ ఎమర్జెన్సీ నిధిని 6 నెలల స్థాయికి పెంచడం ద్వారా మీ క్లియర్ స్కోర్‌ను సులభంగా **AAA** గ్రేడ్‌కు చేర్చవచ్చు!`;
+    }
+
+    if (language === 'hi') {
+      return `### 🕸️ क्लियर स्कोर™ 5-स्तंभ रडार विश्लेषण\n\nआपके **${selectedMonthStr}** वित्तीय रिकॉर्ड के आधार पर रडार स्कोर:\n\n1. 🛡️ **आपातकालीन रनवे:** **${runwayMonths} महीने** (कुल लिक्विड बैलेंस: ${currSym}${Math.round(totalLiquid).toLocaleString()})\n2. 📈 **बचत दर गति:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} शुद्ध बचत)\n3. ⚡ **दैनिक खर्च अनुशासन:** सुरक्षित सीमा के भीतर\n4. 🔒 **निश्चित प्रतिबद्धताएं (50/30/20):** **${fixedPct}%** आय का\n5. 🎯 **बजट एनवेलप स्वास्थ्य:** ${budgets.length} एनवेलप सक्रिय हैं\n\n💡 **AAA ग्रेड पाने का तरीका:** आपातकालीन बचत को 6 महीने के स्तर तक बढ़ाकर अपने स्कोर को तुरंत **AAA** तक पहुंचाएं!`;
+    }
+
+    return `### 🕸️ ClearScore™ 5-Pillar Spider Radar Diagnostic\n\nBased on your live ledger in **${selectedMonthStr}**, here is how your 5 pillars stand:\n\n1. 🛡️ **Emergency Runway:** **${runwayMonths} Months** (${currSym}${Math.round(totalLiquid).toLocaleString()} liquid cash vs ${currSym}${totalSpent.toLocaleString()} monthly burn)\n2. 📈 **Savings Rate Velocity:** **${savingsRate}%** (${currSym}${netBalance.toLocaleString()} surplus retained)\n3. ⚡ **Daily Burn Discipline:** Operating within safe daily thresholds\n4. 🔒 **Fixed Commitments (50/30/20):** **${fixedPct}%** of income allocated to essential rent/bills\n5. 🎯 **Budget Envelope Health:** ${budgets.length} active category envelopes tracked\n\n🏆 **Path to AAA Grade:**\n- Boost your liquid buffer to **6 full months** of living expenses.\n- Keep fixed commitments under 45%.\n- Channel ₹3,000–₹5,000 monthly into an equity index SIP.`;
+  }
+
   // 1. SPECIFIC MERCHANT QUERY (e.g. Zomato, Swiggy, Zepto, Rent, Uber, etc.)
   const matchedTxnsByMerchant = monthTxns.filter((t) => {
     const merch = t.merchant.toLowerCase();
